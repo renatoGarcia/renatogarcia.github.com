@@ -17,12 +17,23 @@ h1 {
     text-align: center;
 }
 
+h2 {
+    font-size: 1.2em;
+    color: #CC7272;
+    margin-top: 1em;
+    text-align: left;
+}
+
 p {
     margin: 1em 0;
 }
 
 strong {
     font-weight: bold;
+}
+
+code {
+    font-family: monospace;
 }
 
 /*----------------------------------------------*/

@@ -1,0 +1,105 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <link href="http://fonts.googleapis.com/css?family=Inconsolata"
+          rel="stylesheet" type="text/css" />
+    <title> Renato Garcia Blog </title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" type="text/css" href="../../media/css/style.css" />
+    <link rel="stylesheet" type="text/css" href="../../media/css/code.css" />
+    <!--[if lt IE 9]>
+    <script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div id="header">
+            <span id="title">
+  Renato Garcia
+</span>
+<div id="menu">
+  <ul>
+        <li><a href="http://renatogarcia.blog.br/pt/index.html">Blog</a></li>
+    <li><a href="http://renatogarcia.blog.br/pt/projetos.html">Projetos</a></li>
+    <li><a href="http://renatogarcia.blog.br/pt/sobre.html">Sobre</a></li>
+      </ul>
+</div>
+<div class="divider"></div>
+    </div>
+    <span id="translation"><a href=../../en/posts/boost-property-tree-extensions.html>
+                  English
+            </a></span>
+    <div id="post">
+      <h1>Extensões para a biblioteca Boost Property Tree</h1>
+<p id="post_date">15 de novembro de 2011</p>
+
+<p>Dentro de um projeto maior, estou usando a biblioteca <a href="http://www.boost.org/doc/libs/release/doc/html/property_tree.html">Boost Property
+Tree</a> como uma forma de ler os arquivos de configuração e passá-los
+para as classes. Por conta disso, acabei criando algumas extensões à
+biblioteca.</p>
+<p>Abaixo descreverei um pouco das principais extensões, e todo o código pode
+ser encontrado <a href="http://github.com/renatoGarcia/boost-extensions">aqui</a>.</p>
+<h2>Assign</h2>
+<p>Suponha que se queira criar dentro do código C++ uma <code>boost::ptree</code> como:</p>
+<p><code><div class="codebox"><figure class="code"><pre>
+key1 value1
+key2
+{
+    key3 12345
+    {
+        key4 "value4 with spaces"
+    }
+    key5 value5
+    "" 10
+    "" 11
+    "" 12
+}
+</pre></figure></div></code></p>
+<p>Usando somente os métodos da classe <code>boost::basic_ptree</code>, o código
+resultante seria algo como:</p>
+<div class="codebox"><figure class="code"><div class="highlight"><pre><span class="n">ptree</span> <span class="n">pt</span><span class="p">;</span><br /><span class="n">pt</span><span class="p">.</span><span class="n">add</span><span class="p">(</span><span class="s">&quot;key1&quot;</span><span class="p">,</span> <span class="s">&quot;value1&quot;</span><span class="p">);</span><br />&nbsp;<br /><span class="n">ptree</span> <span class="n">tmpPt1</span><span class="p">;</span><br /><span class="n">tmpPt1</span><span class="p">.</span><span class="n">add</span><span class="p">(</span><span class="s">&quot;key3&quot;</span><span class="p">,</span> <span class="mi">12345</span><span class="p">);</span><br />&nbsp;<br /><span class="n">ptree</span> <span class="n">tmpPt2</span><span class="p">;</span><br /><span class="n">tmpPt2</span><span class="p">.</span><span class="n">add</span><span class="p">(</span><span class="s">&quot;key4&quot;</span><span class="p">,</span> <span class="s">&quot;value4 with spaces&quot;</span><span class="p">);</span><br />&nbsp;<br /><span class="n">tmpPt1</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">make_pair</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">tmpPt2</span><span class="p">));</span><br /><span class="n">tmpPt1</span><span class="p">.</span><span class="n">add</span><span class="p">(</span><span class="s">&quot;key5&quot;</span><span class="p">,</span> <span class="s">&quot;value5&quot;</span><span class="p">);</span><br />&nbsp;<br /><span class="n">ptree</span> <span class="n">tmpPt3</span><span class="p">;</span><br /><span class="n">tmpPt3</span><span class="p">.</span><span class="n">put_value</span><span class="p">(</span><span class="mi">10</span><span class="p">);</span><br /><span class="n">tmpPt1</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">make_pair</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">tmpPt3</span><span class="p">));</span><br />&nbsp;<br /><span class="n">ptree</span> <span class="n">tmpPt4</span><span class="p">;</span><br /><span class="n">tmpPt4</span><span class="p">.</span><span class="n">put_value</span><span class="p">(</span><span class="mi">11</span><span class="p">);</span><br /><span class="n">tmpPt1</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">make_pair</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">tmpPt4</span><span class="p">));</span><br />&nbsp;<br /><span class="n">ptree</span> <span class="n">tmpPt5</span><span class="p">;</span><br /><span class="n">tmpPt5</span><span class="p">.</span><span class="n">put_value</span><span class="p">(</span><span class="mi">12</span><span class="p">);</span><br /><span class="n">tmpPt1</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">make_pair</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">tmpPt5</span><span class="p">));</span><br />&nbsp;<br /><span class="n">pt</span><span class="p">.</span><span class="n">add_child</span><span class="p">(</span><span class="s">&quot;key2&quot;</span><span class="p">,</span> <span class="n">tmpPt1</span><span class="p">);</span><br /></pre></div><br /><figcaption>C++</figcaption></figure></div>
+
+<p>Um tanto quanto verboso. Uma alternativa legal seria usar alguma coisa como
+a biblioteca <a href="http://www.boost.org/doc/libs/release/libs/assign/doc/index.html">Boost Assign</a>, e é isto que vem a ser esta
+extensão. Usando a classe <code>tree</code>, esta mesma <code>boost::ptree</code> poderia ser
+construída com o código:</p>
+<div class="codebox"><figure class="code"><div class="highlight"><pre><span class="n">ptree</span> <span class="n">pt</span> <span class="o">=</span><br />    <span class="n">tree</span><span class="p">()</span><br />    <span class="p">(</span><span class="s">&quot;key1&quot;</span><span class="p">,</span> <span class="s">&quot;value1&quot;</span><span class="p">)</span><br />    <span class="p">(</span><span class="s">&quot;key2&quot;</span><span class="p">,</span> <span class="n">tree</span><span class="p">()</span><br />        <span class="p">(</span><span class="s">&quot;key3&quot;</span><span class="p">,</span> <span class="mi">12345</span><span class="p">)</span><br />        <span class="p">(</span><span class="n">tree</span><span class="p">()</span><br />            <span class="p">(</span><span class="s">&quot;key4&quot;</span><span class="p">,</span> <span class="s">&quot;value4 with spaces&quot;</span><span class="p">))</span><br />        <span class="p">(</span><span class="s">&quot;key5&quot;</span><span class="p">,</span> <span class="s">&quot;value5&quot;</span><span class="p">)</span><br />        <span class="p">(</span><span class="mi">10</span><span class="p">)(</span><span class="mi">11</span><span class="p">)(</span><span class="mi">12</span><span class="p">));</span><br /></pre></div><br /><figcaption>C++</figcaption></figure></div>
+
+<h2>Lua parser</h2>
+<p>Dependendo da complexidade dos arquivos de configuração, escrevê-los como
+um código <a href="http://www.lua.org/">Lua</a> pode facilitar bastante as coisas. O que esta extensão
+permite é que um script Lua possa ser usado para construir uma
+<code>boost::ptree</code>. A ideia é que um código Lua:</p>
+<div class="codebox"><figure class="code"><div class="highlight"><pre><span class="k">function</span> <span class="nf">func</span><span class="p">(</span><span class="n">w</span><span class="p">)</span><br />    <span class="k">return</span> <span class="s2">&quot;</span><span class="s">hello &quot;</span> <span class="o">..</span> <span class="n">w</span><br /><span class="k">end</span><br />&nbsp;<br /><span class="n">root</span> <span class="o">=</span> <span class="p">{</span><br />    <span class="n">array</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">13</span><span class="p">,</span> <span class="mi">14</span><span class="p">,</span> <span class="mi">15</span><span class="p">,},</span><br />    <span class="n">hi</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="s2">&quot;</span><span class="s">world&quot;</span><span class="p">),</span><br />    <span class="n">subtree</span> <span class="o">=</span> <span class="p">{</span><br />        <span class="n">one</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span><br />        <span class="n">two</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span><br />    <span class="p">},</span><br /><span class="p">}</span><br /></pre></div><br /><figcaption>Lua</figcaption></figure></div>
+
+<p>Possa ser interpretado e carregado como uma <code>boost::ptree</code> usando:</p>
+<div class="codebox"><figure class="code"><div class="highlight"><pre><span class="n">ptree</span> <span class="n">pt</span><span class="p">;</span><br /><span class="n">read_lua</span><span class="p">(</span><span class="s">&quot;test.lua&quot;</span><span class="p">,</span> <span class="s">&quot;root&quot;</span><span class="p">,</span> <span class="n">pt</span><span class="p">);</span><br /></pre></div><br /><figcaption>C++</figcaption></figure></div>
+
+<h2>Python API</h2>
+<p>O projeto dentro do qual estas extensões foram criadas possui uma interface
+<a href="http://python.org/">Python</a>, e quase todas classes recebem no construtor uma
+<code>boost::ptree</code> como argumento. Então, foi necessário criar uma interface
+Python também para a biblioteca Boost Property Tree.</p>
+<p>Particularmente, caso você esteja usando o <a href="http://swig.org/">SWIG</a> para gerar a
+interface Python, o arquivo ptree.i contém todo o código para
+transparentemente converter uma <code>boost::ptree</code> em Python para C++. Caso
+contrário, a interface ainda pode ser usada, pois ela não foi construída
+usando o SWIG. No código Python, uma ptree seria construída e usada:</p>
+<div class="codebox"><figure class="code"><div class="highlight"><pre><span class="n">pt1</span> <span class="o">=</span> <span class="p">(</span><span class="n">tree</span><span class="p">()</span><br />         <span class="p">(</span><span class="s">&#39;key1&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><br />         <span class="p">(</span><span class="s">&#39;key2&#39;</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span><br />         <span class="p">(</span><span class="s">&#39;subtree&#39;</span><span class="p">,</span> <span class="n">tree</span><span class="p">()(</span><span class="mi">1</span><span class="p">)(</span><span class="mi">2</span><span class="p">)(</span><span class="mi">3</span><span class="p">))</span><br />     <span class="p">)</span><span class="o">.</span><span class="n">ptree</span><br /><span class="n">pt2</span> <span class="o">=</span> <span class="n">read_json</span><span class="p">(</span><span class="s">&#39;tree.json&#39;</span><span class="p">)</span><br /><span class="n">pt1</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s">&#39;aaa&#39;</span><span class="p">,</span> <span class="s">&#39;bbb&#39;</span><span class="p">)</span><br /><span class="k">print</span> <span class="n">pt1</span><br /></pre></div><br /><figcaption>Python</figcaption></figure></div>    </div>
+    <div id="disqus_thread"></div>
+    <script type="text/javascript">
+      var disqus_shortname = 'renatogarciablog';
+      var disqus_identifier = '2a986210-e99e-484c-ab3e-490f4587f082-pt';
+      var disqus_url = 'http://renatogarcia.blog.br/pt/posts/extensoes-boost-property-tree.html';
+      // var disqus_developer = 1; // developer mode is on
+      var disqus_title = 'Extensões para a biblioteca Boost Property Tree';
+
+      (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+      })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+  </body>
+</html>
