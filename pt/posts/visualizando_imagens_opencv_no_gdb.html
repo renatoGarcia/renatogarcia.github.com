@@ -1,0 +1,93 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+  <head>
+    <title>Renato Garcia Blog</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" type="text/css" href="https://www.renatogarcia.blog.br//media/css/style.css" />
+    <link rel="stylesheet" type="text/css" href="https://www.renatogarcia.blog.br//media/css/code.css" />
+  </head>
+  <body>
+
+    <div id="page">
+
+      <div id="menu">
+        <span id="blog_title">Renato Garcia</span>
+        <ul>
+          
+          <li class="selected"><a href="https://www.renatogarcia.blog.br//pt/index.html">Blog</a></li>
+          <li ><a href="https://www.renatogarcia.blog.br//pt/projetos.html">Projetos</a></li>
+          <li ><a href="https://www.renatogarcia.blog.br//pt/sobre.html">Sobre</a></li>
+          
+        </ul>
+      </div>
+
+      <div id="blog_body">
+        <div id="translation">
+          
+            <a href=https://www.renatogarcia.blog.br/en/posts/visualizing_opencv_images_on_gdb.html>English
+            
+          </a>
+        </div>
+        
+<div id="post">
+  <h1>Visualizando Imagens OpenCV no GDB</h1>
+  
+  <div class="post_date">15 de outubro de 2012</div>
+  
+  <!-- <p id="post_date">{{resource.meta.created | babel_format_datetime(format="dd 'de' MMMM 'de' yyyy", locale='pt')}}</p> -->
+<p>&lt;span class=&quot;bla&quot;&gt;O repositório com o código da extensão está [aqui][repository].&lt;/span&gt;</p>
+<p>Uma coisa chata de se debugar programas C/C++ que trabalham com imagens é
+visualizá-las durante a debugação.</p>
+<img alt="../../media/img/woman_in_red_bin.png" src="../../media/img/woman_in_red_bin.png" />
+<p>No caso de se usar o GDB, a não ser que você consigar ver uma mulher de vermelho
+na imagem acima, o comando print não ajuda muito. A melhor forma de visualizar
+uma imagem não é como um array de bytes.</p>
+<p>Um jeito um pouco melhor de se ver imagens é usar uma variação de printf
+debugging. Usando a OpenCV, o código abaixo vai mostrar em uma janela a imagem
+que está na variável mat, e esperar até que uma tecla qualquer seja pressionada.</p>
+<div class="code_box"><pre><span class="n">cv</span><span class="o">::</span><span class="n">imshow</span><span class="p">(</span><span class="s">&quot;w&quot;</span><span class="p">,</span> <span class="n">mat</span><span class="p">);</span>
+<span class="n">cv</span><span class="o">::</span><span class="n">waitKey</span><span class="p">();</span>
+</pre><div class="caption"><span class="code_language">C++</span></div></div><p>É simples, mas tem todas as mesmas desvantagens que um <em>printf debugging</em>. A
+solução ideal seria ter o resultado acima, mas disponível como um comando do
+GDB.</p>
+<p>Procurando pela internet, acabei encontrando uma <a class="reference external" href="http://people.ee.ethz.ch/~pestefan/gdb_imshow/index.html">extensão para o GDB</a> que faz exatamente isso para a classe C++ da OpenCV
+<code>cv::Mat</code>. Beleza, quase tudo pronto! Partindo dessa versão, acrescentei
+suporte para IplImage, ROIs, alguns outros detalhes, e tenho agora uma forma bem
+razoável de debugar programas que usam imagens da OpenCV. A versão modificada
+está disponível neste <a class="reference external" href="http://github.com/renatoGarcia/gdb-imshow">repositório do github</a>.</p>
+<img alt="../../media/img/48072cfb-aa5f-4624-8d73-c0f2d69a33ad_2.png" src="../../media/img/48072cfb-aa5f-4624-8d73-c0f2d69a33ad_2.png" />
+<p>Com a extensão instalada, haverá um comando do GDB
+(cv_imshow) que exibirá a imagem em uma janela, idênico à imagem acima.</p>
+<div class="section" id="instalacao">
+<h2>Instalação</h2>
+<p>Para usar esta extensão, você terá que ter instalado o GDB versão 7.2 ou
+posterior, e a biblioteca <a class="reference external" href="http://www.pythonware.com/products/pil/index.htm">Python Imaging Library (PIL)</a>.</p>
+<p>A primeira coisa a ser feita é carregar a extensão no GDB. Se o arquivo
+cv_imshow.py for copiado para <em>data-directory</em>/python/gdb/command (<a class="reference external" href="http://sourceware.org/gdb/current/onlinedocs/gdb/Python.html">explicações
+aqui</a>) ele será automaticamente carregado.</p>
+<p>O primeiro passo é copiar o arquivo cv_imshow.py para um diretório</p>
+</div>
+
+</div>
+<div id="disqus_thread"></div>
+<script type="text/javascript">
+  var disqus_shortname = 'renatogarciablog';
+  var disqus_identifier = '48072cfb-aa5f-4624-8d73-c0f2d69a33ad-pt';
+  <!-- var disqus_url = 'http://renatogarcia.blog.br//home/renatofg/programming/blog_caligari/content/pt/posts/visualizando_imagens_opencv_no_gdb.rst'; -->
+  var disqus_developer = 0; // if 1 developer mode is on
+  var disqus_title = 'Visualizando Imagens OpenCV no GDB';
+
+  (function() {
+  var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+  dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+  })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+
+      </div>
+
+      </div>
+    </body>
+  </html>

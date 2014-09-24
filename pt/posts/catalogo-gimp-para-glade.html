@@ -1,0 +1,75 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+  <head>
+    <title>Renato Garcia Blog</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" type="text/css" href="https://www.renatogarcia.blog.br//media/css/style.css" />
+    <link rel="stylesheet" type="text/css" href="https://www.renatogarcia.blog.br//media/css/code.css" />
+  </head>
+  <body>
+
+    <div id="page">
+
+      <div id="menu">
+        <span id="blog_title">Renato Garcia</span>
+        <ul>
+          
+          <li class="selected"><a href="https://www.renatogarcia.blog.br//pt/index.html">Blog</a></li>
+          <li ><a href="https://www.renatogarcia.blog.br//pt/projetos.html">Projetos</a></li>
+          <li ><a href="https://www.renatogarcia.blog.br//pt/sobre.html">Sobre</a></li>
+          
+        </ul>
+      </div>
+
+      <div id="blog_body">
+        <div id="translation">
+          
+            <a href=https://www.renatogarcia.blog.br/en/posts/glade-gimp-catalog.html>English
+            
+          </a>
+        </div>
+        
+<div id="post">
+  <h1>Catálogo GIMP para Glade</h1>
+  
+  <div class="post_date">11 de outubro de 2011</div>
+  
+  <p>Estou planejando desenvolver alguns plugins para o <a class="reference external" href="http://www.gimp.org/">GIMP</a>, e eu gostaria de
+projetar as interfaces gráficas usando o <a class="reference external" href="http://glade.gnome.org/">Glade</a>. Infelizmente não há um
+catálogo dos widgets do GIMP para o Glade, então, mais um projeto que entra na
+pilha.</p>
+<p>Desde a versão 3.10.0 o Glade está gerando arquivos somente para o GTK+3,
+entretanto projeto GIMP está planejando compatibilidade com o GTK+3 <a class="reference external" href="http://wiki.gimp.org/index.php/Roadmap">somente a
+partir da versão 3.10</a> (a última versão estável é a
+2.6.11). Portanto será necessário usar o Glade 3.8.0 (ou menor) para gerar um
+arquivo .ui compatível com o GTK+2.</p>
+<p>O catálogo consiste de um arquivo XML e alguns ícones, sendo que eu ainda não
+fiz os ícones, principalmente por causa da minha falta habilidade com
+desenhos. Para ser usável, o arquivo XML deve ser instalado no diretório do
+sistema de catálogos do Glade (normalmente /usr/share/glade3/catalogs) ou em um
+diretório listado na variável de ambiente GLADE_CATALOG_PATH.</p>
+<p>O projeto está hospedado no GitHub (<a class="reference external" href="http://github.com/renatoGarcia/glade-gimp-catalog">aqui</a>).</p>
+
+</div>
+<div id="disqus_thread"></div>
+<script type="text/javascript">
+  var disqus_shortname = 'renatogarciablog';
+  var disqus_identifier = '218cf495-8cf6-41e9-8ec6-25d8a25d512c-pt';
+  <!-- var disqus_url = 'http://renatogarcia.blog.br//home/renatofg/programming/blog_caligari/content/pt/posts/catalogo-gimp-para-glade.rst'; -->
+  var disqus_developer = 0; // if 1 developer mode is on
+  var disqus_title = 'Catálogo GIMP para Glade';
+
+  (function() {
+  var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+  dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+  })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+
+      </div>
+
+      </div>
+    </body>
+  </html>

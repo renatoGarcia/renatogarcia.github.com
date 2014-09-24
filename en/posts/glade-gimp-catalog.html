@@ -1,0 +1,73 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+  <head>
+    <title>Renato Garcia Blog</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" type="text/css" href="https://www.renatogarcia.blog.br//media/css/style.css" />
+    <link rel="stylesheet" type="text/css" href="https://www.renatogarcia.blog.br//media/css/code.css" />
+  </head>
+  <body>
+
+    <div id="page">
+
+      <div id="menu">
+        <span id="blog_title">Renato Garcia</span>
+        <ul>
+          
+          <li class="selected"><a href="https://www.renatogarcia.blog.br//en/index.html">Blog</a></li>
+          <li ><a href="https://www.renatogarcia.blog.br//en/projects.html">Projects</a></li>
+          <li ><a href="https://www.renatogarcia.blog.br//en/about.html">About</a></li>
+          
+        </ul>
+      </div>
+
+      <div id="blog_body">
+        <div id="translation">
+          
+          <a href=https://www.renatogarcia.blog.br/pt/posts/catalogo-gimp-para-glade.html>Português
+            
+          </a>
+        </div>
+        
+<div id="post">
+  <h1>Glade GIMP Catalog</h1>
+  
+  <div class="post_date">October 11, 2011</div>
+  
+  <p>I'm going develop some <a class="reference external" href="http://www.gimp.org/">GIMP</a> plugins, and I would like to design the graphical
+interfaces using the <a class="reference external" href="http://glade.gnome.org/">Glade</a>. Sadly there aren't a catalog to Glade to support the GIMP
+widgets, then, time to one more project in the stack.</p>
+<p>Since version 3.10.0 Glade is targeting GTK+3 only, however the GIMP project is planning
+support the GTK+3 <a class="reference external" href="http://wiki.gimp.org/index.php/Roadmap">only at release 3.0</a> (the current stable release is
+2.6.11). Thus will be needed to use Glade 3.8.0 (or below) to generate a .ui file
+compatible with GTK+2.</p>
+<p>The catalog itself is simply a XML file and some icons, being that the
+icons I don't have made yet, due to my lack of drawing skills mainly. To be
+usable, the XML file must be installed in the system Glade catalog
+directory (usually /usr/share/glade3/catalogs) or in a directory listed in
+the GLADE_CATALOG_PATH environment variable.</p>
+<p>The project is hosted on GitHub (<a class="reference external" href="http://github.com/renatoGarcia/glade-gimp-catalog">here</a>).</p>
+
+</div>
+<div id="disqus_thread"></div>
+<script type="text/javascript">
+  var disqus_shortname = 'renatogarciablog';
+  var disqus_identifier = '218cf495-8cf6-41e9-8ec6-25d8a25d512c-en';
+  <!-- var disqus_url = 'http://renatogarcia.blog.br//home/renatofg/programming/blog_caligari/content/en/posts/glade-gimp-catalog.rst'; -->
+  var disqus_developer = 0; // if 1 developer mode is on
+  var disqus_title = 'Glade GIMP Catalog';
+
+  (function() {
+  var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+  dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+  })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+
+      </div>
+
+      </div>
+    </body>
+  </html>
