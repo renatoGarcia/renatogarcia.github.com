@@ -2,9 +2,38 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <title> Renato Garcia Blog </title>
+    <title> Renato Garcia Blog {{ resource.meta.title_ending }}</title>
     <meta charset="utf-8" />
   </head>
   <body>
+    <script type="text/javascript">
+      var language;
+      if (navigator.language) {
+          language = navigator.language;
+      }
+      else if (navigator.userLanguage) {
+          language = navigator.userLanguage;
+      }
+      else {
+          language = "en";
+      }
+
+      if (language.match("pt")) {
+          window.location = "./pt";
+      }
+      else {
+          window.location = "./en";
+      }
+    </script>
+    <noscript>
+      <div id="pt_message">
+      <p> Isto iria ser automático, mas você não tem JavaScript habilitado... </p>
+      <p><a href="./pt">Site em português</a></p>
+      </div>
+      <div id="en_message">
+      <p> This should be automatic, but you don't have anabled JavaScript... </p>
+      <p><a href="./en">English version</a></p>
+      </div>
+    </noscript>
   </body>
 </html>
