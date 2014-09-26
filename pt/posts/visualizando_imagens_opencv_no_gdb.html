@@ -2,17 +2,17 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
   <head>
-    <title>Renato Garcia Blog</title>
+    <title>Visualizando Imagens OpenCV no GDB</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" type="text/css" href="http://www.renatogarcia.blog.br//media/css/style.css" />
     <link rel="stylesheet" type="text/css" href="http://www.renatogarcia.blog.br//media/css/code.css" />
   </head>
   <body>
 
-    <div id="page">
+    <div class="page">
 
-      <div id="menu">
-        <span id="blog_title">Renato Garcia</span>
+      <div class="header">
+        <span class="title">Renato Garcia</span>
         <ul>
           
           <li class="selected"><a href="http://www.renatogarcia.blog.br//pt/index.html">Blog</a></li>
@@ -22,29 +22,30 @@
         </ul>
       </div>
 
-      <div id="blog_body">
-        <div id="translation">
+      <div class="page_body">
+        <div class="translation">
           
             <a href=http://www.renatogarcia.blog.br/en/posts/visualizing_opencv_images_on_gdb.html>English
             
           </a>
         </div>
         
-<div id="post">
+<div class="post">
   <h1>Visualizando Imagens OpenCV no GDB</h1>
   
   <div class="post_date">15 de outubro de 2012</div>
   
-  <!-- <p id="post_date">{{resource.meta.created | babel_format_datetime(format="dd 'de' MMMM 'de' yyyy", locale='pt')}}</p> -->
-<p>&lt;span class=&quot;bla&quot;&gt;O repositório com o código da extensão está [aqui][repository].&lt;/span&gt;</p>
+  <p><strong>O repositório com o código da extensão está [aqui][repository]</strong></p>
 <p>Uma coisa chata de se debugar programas C/C++ que trabalham com imagens é
 visualizá-las durante a debugação.</p>
+<div class="figure">
 <img alt="../../media/img/woman_in_red_bin.png" src="../../media/img/woman_in_red_bin.png" />
+</div>
 <p>No caso de se usar o GDB, a não ser que você consigar ver uma mulher de vermelho
 na imagem acima, o comando print não ajuda muito. A melhor forma de visualizar
 uma imagem não é como um array de bytes.</p>
-<p>Um jeito um pouco melhor de se ver imagens é usar uma variação de printf
-debugging. Usando a OpenCV, o código abaixo vai mostrar em uma janela a imagem
+<p>Um jeito um pouco melhor de se ver imagens é usar uma variação de <em>printf
+debugging</em>. Usando a OpenCV, o código abaixo vai mostrar em uma janela a imagem
 que está na variável mat, e esperar até que uma tecla qualquer seja pressionada.</p>
 <div class="code_box"><pre><span class="n">cv</span><span class="o">::</span><span class="n">imshow</span><span class="p">(</span><span class="s">&quot;w&quot;</span><span class="p">,</span> <span class="n">mat</span><span class="p">);</span>
 <span class="n">cv</span><span class="o">::</span><span class="n">waitKey</span><span class="p">();</span>
@@ -56,7 +57,9 @@ GDB.</p>
 suporte para IplImage, ROIs, alguns outros detalhes, e tenho agora uma forma bem
 razoável de debugar programas que usam imagens da OpenCV. A versão modificada
 está disponível neste <a class="reference external" href="http://github.com/renatoGarcia/gdb-imshow">repositório do github</a>.</p>
+<div class="figure">
 <img alt="../../media/img/48072cfb-aa5f-4624-8d73-c0f2d69a33ad_2.png" src="../../media/img/48072cfb-aa5f-4624-8d73-c0f2d69a33ad_2.png" />
+</div>
 <p>Com a extensão instalada, haverá um comando do GDB
 (cv_imshow) que exibirá a imagem em uma janela, idênico à imagem acima.</p>
 <div class="section" id="instalacao">
