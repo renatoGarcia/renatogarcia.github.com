@@ -50,11 +50,22 @@ blockquote, em {
 
 img {
     max-width: 90%;
-    margin: 1em auto 1em auto;
-    align: center;
+    display: block;
+    margin: 0 auto 0 auto;
 }
 
 /*----------------------------------------------------------------------------*/
+.figure {
+    /* width: 500px; */
+}
+
+p.caption {
+    max-width: 90%;
+    margin: 0.5em auto 1em auto;
+    font-size: 0.9em;
+    font-style: italic;
+}
+
 .page {
     width: 90%;
     max-width: 50em;
@@ -125,7 +136,7 @@ img {
 .code_box {
     font-family: 'Inconsolata', monospace;
     background-color: #292929;
-    padding: 1em;
+    padding: 1em 1em 0.4em 1em;
 }
 
 .code_box .caption {

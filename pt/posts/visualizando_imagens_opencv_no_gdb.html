@@ -33,44 +33,49 @@
 <div class="post">
   <h1>Visualizando Imagens OpenCV no GDB</h1>
   
-  <div class="post_date">15 de outubro de 2012</div>
+  <div class="post_date">02 de outubro de 2014</div>
   
-  <p><strong>O repositório com o código da extensão está [aqui][repository]</strong></p>
-<p>Uma coisa chata de se debugar programas C/C++ que trabalham com imagens é
-visualizá-las durante a debugação.</p>
+  <p>Ao se debugar um programa usando o GDB ou qualquer outro debugador, se uma
+determinada variável representar uma imagem, inspecioná-la simplesmente
+imprimindo seu conteúdo como uma sequência de números ou caracteres não é lá de
+muita utilidade.</p>
 <div class="figure">
 <img alt="../../media/img/woman_in_red_bin.png" src="../../media/img/woman_in_red_bin.png" />
+<p class="caption">A não ser que você esteja vendo uma mulher de vermelho, o resultado acima
+não deve ter lhe acrescentado muita informação sobre o estado da variável
+<code>matImg</code>.</p>
 </div>
-<p>No caso de se usar o GDB, a não ser que você consigar ver uma mulher de vermelho
-na imagem acima, o comando print não ajuda muito. A melhor forma de visualizar
-uma imagem não é como um array de bytes.</p>
-<p>Um jeito um pouco melhor de se ver imagens é usar uma variação de <em>printf
-debugging</em>. Usando a OpenCV, o código abaixo vai mostrar em uma janela a imagem
-que está na variável mat, e esperar até que uma tecla qualquer seja pressionada.</p>
-<div class="code_box"><pre><span class="n">cv</span><span class="o">::</span><span class="n">imshow</span><span class="p">(</span><span class="s">&quot;w&quot;</span><span class="p">,</span> <span class="n">mat</span><span class="p">);</span>
+<p>Uma alternativa um pouco melhor do que simplesmente imprimir uma imagem como uma
+sequência de bytes, seria uma variação de <em>printf debugging</em>. Usando as funções
+da biblioteca OpenCV como exemplo, o código abaixo irá exibir em uma janela a
+imagem que está na variável <code>mat</code>, e esperar até que uma tecla qualquer
+seja pressionada.</p>
+<div class="code_box"><pre><span class="n">cv</span><span class="o">::</span><span class="n">imshow</span><span class="p">(</span><span class="s">&quot;window&quot;</span><span class="p">,</span> <span class="n">mat</span><span class="p">);</span>
 <span class="n">cv</span><span class="o">::</span><span class="n">waitKey</span><span class="p">();</span>
-</pre><div class="caption"><span class="code_language">C++</span></div></div><p>É simples, mas tem todas as mesmas desvantagens que um <em>printf debugging</em>. A
-solução ideal seria ter o resultado acima, mas disponível como um comando do
-GDB.</p>
-<p>Procurando pela internet, acabei encontrando uma <a class="reference external" href="http://people.ee.ethz.ch/~pestefan/gdb_imshow/index.html">extensão para o GDB</a> que faz exatamente isso para a classe C++ da OpenCV
-<code>cv::Mat</code>. Beleza, quase tudo pronto! Partindo dessa versão, acrescentei
-suporte para IplImage, ROIs, alguns outros detalhes, e tenho agora uma forma bem
-razoável de debugar programas que usam imagens da OpenCV. A versão modificada
-está disponível neste <a class="reference external" href="http://github.com/renatoGarcia/gdb-imshow">repositório do github</a>.</p>
+</pre><div class="caption"><span class="code_language">C++</span></div></div><p>É simples, funciona, mas possui todas as mesmas desvantagens da técnica de
+<em>printf debugging</em> tradicional. A solução ideal seria obter o mesmo resultado
+acima, mas através de um comando interno do GDB.</p>
+<p>Tentando não acabar reinventando a roda sem saber, depois de um tempo de
+pesquisa encontrei uma extensão para o GDB, criada por Stefano Pellegrini, que
+fazia boa parte do que eu desejava para objetos do tipo <code>cv::Mat</code>. Beleza!
+Partindo dessa versão, acrescentei suporte para IplImage, ROIs, alguns outros
+detalhes, e tenho agora uma forma bem razoável de debugar programas que usam
+imagens da OpenCV.</p>
 <div class="figure">
 <img alt="../../media/img/48072cfb-aa5f-4624-8d73-c0f2d69a33ad_2.png" src="../../media/img/48072cfb-aa5f-4624-8d73-c0f2d69a33ad_2.png" />
+<p class="caption">Uma vez a extensão instalada, haverá um novo comando do GDB que exibirá a
+imagem em uma janela.</p>
 </div>
-<p>Com a extensão instalada, haverá um comando do GDB
-(cv_imshow) que exibirá a imagem em uma janela, idênico à imagem acima.</p>
-<div class="section" id="instalacao">
-<h2>Instalação</h2>
-<p>Para usar esta extensão, você terá que ter instalado o GDB versão 7.2 ou
-posterior, e a biblioteca <a class="reference external" href="http://www.pythonware.com/products/pil/index.htm">Python Imaging Library (PIL)</a>.</p>
-<p>A primeira coisa a ser feita é carregar a extensão no GDB. Se o arquivo
-cv_imshow.py for copiado para <em>data-directory</em>/python/gdb/command (<a class="reference external" href="http://sourceware.org/gdb/current/onlinedocs/gdb/Python.html">explicações
-aqui</a>) ele será automaticamente carregado.</p>
-<p>O primeiro passo é copiar o arquivo cv_imshow.py para um diretório</p>
-</div>
+<p>Esta extensão irá registrar um novo comando, <code>cv_imshow</code>, que recebe como
+argumento uma variável contendo a imagem que deverá ser exibida. A princípio
+cogitei usar o mecanismo de <a class="reference external" href="http://sourceware.org/gdb/current/onlinedocs/gdb/Pretty-Printing.html#Pretty-Printing">pretty printing</a> ao invés de criar um novo
+comando, mas não teria sido a melhor decisão. Mesmo restrito aos tipos de imagem
+da OpenCV, nem todos os formatos são passíveis de serem exibidos. Portanto ainda
+é útil que se tenha ao menos o comando de <code>print</code> tradicional do GDB, como
+um último recuso para inspecionar uma variável caso ela não possa ser
+inspecionada graficamente.</p>
+<p>O código fonte, juntamente com todas as instruções para compilar e instalar a
+extensão podem ser encontrados (em inglês) no <a class="reference external" href="https://github.com/renatoGarcia/gdb-imshow">repositório github</a> do projeto.</p>
 
 </div>
 <div id="disqus_thread"></div>
