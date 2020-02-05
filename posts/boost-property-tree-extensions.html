@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <title>Renato Garcia</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" type="text/css" href="../media/css/style.css" />
+    <link rel="stylesheet" type="text/css" href="../media/css/code.css" />
+  </head>
+    <body>
+      <div class="page">
+
+        <div class="header">
+          <span class="title">Renato Garcia</span>
+          <ul>
+            <li class="selected"><a href="../posts/index.html">Blog</a></li>
+            <li><a href="../projects/index.html">Projects</a></li>
+            <li><a href="../about.html">About</a></li>
+          </ul>
+        </div>
+
+        <div class="page_body">
+          <div class="post">
+  <h1>Boost Property Tree Extensions</h1>
+  <div class="post_date">2011-11-15</div>
+  <p>Inside a bigger project, I’m using the <a href="http://www.boost.org/doc/libs/release/doc/html/property_tree.html">Boost Property Tree</a> library to read the config files and pass it to the classes. For this reason, I have made any extensions to Boost Property Tree.</p>
+<p>Bellow I will describe the main extensions, and all code can be found <a href="http://github.com/renatoGarcia/boost-extensions">here</a>.</p>
+<h2 id="assign">Assign</h2>
+<p>Suppose that in C++ code you wish to create a <code>boost::ptree</code> as:</p>
+<div class="code_block">
+<pre><code>key1 value1
+key2
+{
+    key3 12345
+    {
+        key4 &quot;value4 with spaces&quot;
+    }
+    key5 value5
+    &quot;&quot; 10
+    &quot;&quot; 11
+    &quot;&quot; 12
+}</code></pre>
+<p>Text</p>
+</div>
+<p>Using only the <code>boost::basic_ptree</code> class methods, the code would be something like:</p>
+<div class="code_block">
+<div class="sourceCode" id="cb2"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb2-1"><a href="#cb2-1"></a>ptree pt;</span>
+<span id="cb2-2"><a href="#cb2-2"></a>pt.add(<span class="st">&quot;key1&quot;</span>, <span class="st">&quot;value1&quot;</span>);</span>
+<span id="cb2-3"><a href="#cb2-3"></a></span>
+<span id="cb2-4"><a href="#cb2-4"></a>ptree tmpPt1;</span>
+<span id="cb2-5"><a href="#cb2-5"></a>tmpPt1.add(<span class="st">&quot;key3&quot;</span>, <span class="dv">12345</span>);</span>
+<span id="cb2-6"><a href="#cb2-6"></a></span>
+<span id="cb2-7"><a href="#cb2-7"></a>ptree tmpPt2;</span>
+<span id="cb2-8"><a href="#cb2-8"></a>tmpPt2.add(<span class="st">&quot;key4&quot;</span>, <span class="st">&quot;value4 with spaces&quot;</span>);</span>
+<span id="cb2-9"><a href="#cb2-9"></a></span>
+<span id="cb2-10"><a href="#cb2-10"></a>tmpPt1.push_back(<span class="bu">std::</span>make_pair(<span class="st">&quot;&quot;</span>, tmpPt2));</span>
+<span id="cb2-11"><a href="#cb2-11"></a>tmpPt1.add(<span class="st">&quot;key5&quot;</span>, <span class="st">&quot;value5&quot;</span>);</span>
+<span id="cb2-12"><a href="#cb2-12"></a></span>
+<span id="cb2-13"><a href="#cb2-13"></a>ptree tmpPt3;</span>
+<span id="cb2-14"><a href="#cb2-14"></a>tmpPt3.put_value(<span class="dv">10</span>);</span>
+<span id="cb2-15"><a href="#cb2-15"></a>tmpPt1.push_back(<span class="bu">std::</span>make_pair(<span class="st">&quot;&quot;</span>, tmpPt3));</span>
+<span id="cb2-16"><a href="#cb2-16"></a></span>
+<span id="cb2-17"><a href="#cb2-17"></a>ptree tmpPt4;</span>
+<span id="cb2-18"><a href="#cb2-18"></a>tmpPt4.put_value(<span class="dv">11</span>);</span>
+<span id="cb2-19"><a href="#cb2-19"></a>tmpPt1.push_back(<span class="bu">std::</span>make_pair(<span class="st">&quot;&quot;</span>, tmpPt4));</span>
+<span id="cb2-20"><a href="#cb2-20"></a></span>
+<span id="cb2-21"><a href="#cb2-21"></a>ptree tmpPt5;</span>
+<span id="cb2-22"><a href="#cb2-22"></a>tmpPt5.put_value(<span class="dv">12</span>);</span>
+<span id="cb2-23"><a href="#cb2-23"></a>tmpPt1.push_back(<span class="bu">std::</span>make_pair(<span class="st">&quot;&quot;</span>, tmpPt5));</span>
+<span id="cb2-24"><a href="#cb2-24"></a></span>
+<span id="cb2-25"><a href="#cb2-25"></a>pt.add_child(<span class="st">&quot;key2&quot;</span>, tmpPt1);</span></code></pre></div>
+<p>C++</p>
+</div>
+<p>A bit verbose. One nice alternative would be to use something similar to the <a href="http://www.boost.org/doc/libs/release/libs/assign/doc/index.html">Boost Assign</a> library, and is precisely this what this extension do. Using the <code>tree</code> class, that same <code>boost::ptree</code> can be build with the code:</p>
+<div class="code_block">
+<div class="sourceCode" id="cb3"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb3-1"><a href="#cb3-1"></a>ptree pt =</span>
+<span id="cb3-2"><a href="#cb3-2"></a>    tree()</span>
+<span id="cb3-3"><a href="#cb3-3"></a>    (<span class="st">&quot;key1&quot;</span>, <span class="st">&quot;value1&quot;</span>)</span>
+<span id="cb3-4"><a href="#cb3-4"></a>    (<span class="st">&quot;key2&quot;</span>, tree()</span>
+<span id="cb3-5"><a href="#cb3-5"></a>        (<span class="st">&quot;key3&quot;</span>, <span class="dv">12345</span>)</span>
+<span id="cb3-6"><a href="#cb3-6"></a>        (tree()</span>
+<span id="cb3-7"><a href="#cb3-7"></a>            (<span class="st">&quot;key4&quot;</span>, <span class="st">&quot;value4 with spaces&quot;</span>))</span>
+<span id="cb3-8"><a href="#cb3-8"></a>        (<span class="st">&quot;key5&quot;</span>, <span class="st">&quot;value5&quot;</span>)</span>
+<span id="cb3-9"><a href="#cb3-9"></a>        (<span class="dv">10</span>)(<span class="dv">11</span>)(<span class="dv">12</span>));</span></code></pre></div>
+<p>C++</p>
+</div>
+<h2 id="lua-parser">Lua parser</h2>
+<p>If the config files become complexes, write it as a <a href="http://www.lua.org/">Lua</a> script can significantly easily the work. This extension allows that a Lua script be used to build a <code>boost::ptree</code>. The aim is that the Lua’s code:</p>
+<div class="code_block">
+<div class="sourceCode" id="cb4"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb4-1"><a href="#cb4-1"></a><span class="kw">function</span> func<span class="op">(</span>w<span class="op">)</span></span>
+<span id="cb4-2"><a href="#cb4-2"></a>    <span class="cf">return</span> <span class="st">&quot;hello &quot;</span> <span class="op">..</span> w</span>
+<span id="cb4-3"><a href="#cb4-3"></a><span class="cf">end</span></span>
+<span id="cb4-4"><a href="#cb4-4"></a></span>
+<span id="cb4-5"><a href="#cb4-5"></a>root <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb4-6"><a href="#cb4-6"></a>    array <span class="op">=</span> <span class="op">{</span> <span class="dv">10</span><span class="op">,</span> <span class="dv">11</span><span class="op">,</span> <span class="dv">12</span><span class="op">,</span> <span class="dv">13</span><span class="op">,</span> <span class="dv">14</span><span class="op">,</span> <span class="dv">15</span><span class="op">,},</span></span>
+<span id="cb4-7"><a href="#cb4-7"></a>    hi <span class="op">=</span> func<span class="op">(</span><span class="st">&quot;world&quot;</span><span class="op">),</span></span>
+<span id="cb4-8"><a href="#cb4-8"></a>    subtree <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb4-9"><a href="#cb4-9"></a>        one <span class="op">=</span> <span class="dv">1</span><span class="op">,</span></span>
+<span id="cb4-10"><a href="#cb4-10"></a>        two <span class="op">=</span> <span class="dv">2</span><span class="op">,</span></span>
+<span id="cb4-11"><a href="#cb4-11"></a>    <span class="op">},</span></span>
+<span id="cb4-12"><a href="#cb4-12"></a><span class="op">}</span></span></code></pre></div>
+<p>Lua</p>
+</div>
+<p>Can be executed and loaded as a <code>boost::ptree</code> with:</p>
+<div class="code_block">
+<div class="sourceCode" id="cb5"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb5-1"><a href="#cb5-1"></a>ptree pt;</span>
+<span id="cb5-2"><a href="#cb5-2"></a>read_lua(<span class="st">&quot;test.lua&quot;</span>, <span class="st">&quot;root&quot;</span>, pt);</span></code></pre></div>
+<p>C++</p>
+</div>
+<h2 id="python-api">Python API</h2>
+<p>The project into what these extensions was created have a <a href="http://python.org/">Python</a> binding, and almost all classes accept a <code>boost::ptree</code> in the constructor. Thus was needed to create a Python binding to Boost Property Tree library too.</p>
+<p>If you is using the <a href="http://swig.org/">SWIG</a> to expose your classes to Python, the ptree.i file will make transparent the Python -&gt; C++ ptree translation. Else, the binding code don’t uses the SWIG anyway and a ptree can be created and used in Python just as:</p>
+<div class="code_block">
+<div class="sourceCode" id="cb6"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1"></a>pt1 <span class="op">=</span> (tree()</span>
+<span id="cb6-2"><a href="#cb6-2"></a>         (<span class="st">'key1'</span>, <span class="dv">1</span>)</span>
+<span id="cb6-3"><a href="#cb6-3"></a>         (<span class="st">'key2'</span>, <span class="dv">2</span>)</span>
+<span id="cb6-4"><a href="#cb6-4"></a>         (<span class="st">'subtree'</span>, tree()(<span class="dv">1</span>)(<span class="dv">2</span>)(<span class="dv">3</span>))</span>
+<span id="cb6-5"><a href="#cb6-5"></a>     ).ptree</span>
+<span id="cb6-6"><a href="#cb6-6"></a>pt2 <span class="op">=</span> read_json(<span class="st">'tree.json'</span>)</span>
+<span id="cb6-7"><a href="#cb6-7"></a>pt1.add(<span class="st">'aaa'</span>, <span class="st">'bbb'</span>)</span>
+<span id="cb6-8"><a href="#cb6-8"></a><span class="bu">print</span> pt1</span></code></pre></div>
+<p>Python</p>
+</div>
+</div>
+<div id="disqus_thread"></div>
+<script type="text/javascript">
+  var disqus_shortname = 'renatogarciablog';
+  var disqus_identifier = '2a986210-e99e-484c-ab3e-490f4587f082-en';
+  <!-- var disqus_url = 'http://renatogarcia.blog.br/{{path}}'; -->
+  var disqus_developer = 0; // if 1 developer mode is on
+  var disqus_title = 'Boost Property Tree Extensions';
+
+  (function() {
+  var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+  dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+  })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+
+        </div>
+
+      </div>
+    </body>
+</html>

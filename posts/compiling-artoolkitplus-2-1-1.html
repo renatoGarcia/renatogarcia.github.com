@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <title>Renato Garcia</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" type="text/css" href="../media/css/style.css" />
+    <link rel="stylesheet" type="text/css" href="../media/css/code.css" />
+  </head>
+    <body>
+      <div class="page">
+
+        <div class="header">
+          <span class="title">Renato Garcia</span>
+          <ul>
+            <li class="selected"><a href="../posts/index.html">Blog</a></li>
+            <li><a href="../projects/index.html">Projects</a></li>
+            <li><a href="../about.html">About</a></li>
+          </ul>
+        </div>
+
+        <div class="page_body">
+          <div class="post">
+  <h1>Compiling ARToolKitPlus 2.1.1</h1>
+  <div class="post_date">2009-10-28</div>
+  <p><strong>20 Mar 2011 – Updated to correct an error in file arDetectMarker.cxx when using GCC 4.5</strong></p>
+<p>The <a href="http://studierstube.icg.tu-graz.ac.at/handheld_ar/artoolkitplus.php">ARToolKitPlus</a> library isn’t developed anymore since June 2006. Nowadays is a pain compile it: there are errors with GCC 4.4, it uses the qmake builder of KDE 3 series, and there are errors on internal includes. To solve this I make any patches and one project in <a href="http://www.scons.org">SCons</a>, which is better than qmake, IMO, and have less dependencies.</p>
+<p>If you use Arch Linux there are one package in AUR with that changes, else, follow this steps:</p>
+<p>Download the package in <a href="http://aur.archlinux.org/packages/artoolkitplus">Arch AUR</a> and the <a href="http://studierstube.icg.tu-graz.ac.at/handheld_ar/download/ARToolKitPlus_2.1.1.zip">ARToolKitPlus</a> source. Put them in a same empty directory.</p>
+<p>Run the following commands:</p>
+<div class="code_block">
+<div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1"></a><span class="fu">tar</span> -xvzf artoolkitplus.tar.gz</span>
+<span id="cb1-2"><a href="#cb1-2"></a><span class="fu">unzip</span> ARToolKitPlus_2.1.1.zip -d artoolkitplus</span>
+<span id="cb1-3"><a href="#cb1-3"></a><span class="bu">cd</span> artoolkitplus</span>
+<span id="cb1-4"><a href="#cb1-4"></a><span class="fu">mv</span> sample_multi_SConscript sample/multi/SConscript</span>
+<span id="cb1-5"><a href="#cb1-5"></a><span class="fu">mv</span> sample_simple_SConscript sample/simple/SConscript</span>
+<span id="cb1-6"><a href="#cb1-6"></a><span class="fu">mv</span> src_SConscript src/SConscript</span>
+<span id="cb1-7"><a href="#cb1-7"></a><span class="fu">mv</span> tools_IdPatGen_SConscript tools/IdPatGen/SConscript</span>
+<span id="cb1-8"><a href="#cb1-8"></a><span class="fu">patch</span> -p0 <span class="op">&lt;</span> gcc45.patch</span>
+<span id="cb1-9"><a href="#cb1-9"></a><span class="ex">scons</span> install prefix=<span class="va">$(</span><span class="bu">echo</span> <span class="va">${PWD%</span>/*<span class="va">})</span>/pkg/usr</span>
+<span id="cb1-10"><a href="#cb1-10"></a><span class="fu">mv</span> include.patch ..</span>
+<span id="cb1-11"><a href="#cb1-11"></a><span class="bu">cd</span> ..</span>
+<span id="cb1-12"><a href="#cb1-12"></a><span class="fu">patch</span> -p0 <span class="op">&lt;</span> include.patch</span></code></pre></div>
+<p>Bash</p>
+</div>
+<p>Logically you must have SCons installed. If all goes well the ARTKP is compiled inside pkg directory.</p>
+</div>
+<div id="disqus_thread"></div>
+<script type="text/javascript">
+  var disqus_shortname = 'renatogarciablog';
+  var disqus_identifier = 'http://renatogarcia.blog.br/en/posts/compiling-artoolkitplus-2-1-1.html-en';
+  <!-- var disqus_url = 'http://renatogarcia.blog.br/{{path}}'; -->
+  var disqus_developer = 0; // if 1 developer mode is on
+  var disqus_title = 'Compiling ARToolKitPlus 2.1.1';
+
+  (function() {
+  var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+  dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+  })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+
+        </div>
+
+      </div>
+    </body>
+</html>

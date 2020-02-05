@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <title>Renato Garcia</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" type="text/css" href="../media/css/style.css" />
+    <link rel="stylesheet" type="text/css" href="../media/css/code.css" />
+  </head>
+    <body>
+      <div class="page">
+
+        <div class="header">
+          <span class="title">Renato Garcia</span>
+          <ul>
+            <li class="selected"><a href="../posts/index.html">Blog</a></li>
+            <li><a href="../projects/index.html">Projects</a></li>
+            <li><a href="../about.html">About</a></li>
+          </ul>
+        </div>
+
+        <div class="page_body">
+          <div class="post">
+  <h1>Visualizing OpenCV Images on GDB</h1>
+  <div class="post_date">2014-10-02</div>
+  <p>On debugging programs, be it with GDB or any other debugger, if some variable represents a picture, to inspect it printing its content as a number sequence or character sequence is not that useful.</p>
+<figure>
+<img src="../../media/img/woman_in_red_bin.png" alt /><figcaption>Except if you can see a woman in red above, that output is not much clarifying about the state of <code>matImg</code> variable.</figcaption>
+</figure>
+<p>A little better option than simply to print an image as a byte array, would be a variation of “printf debugging”. Using the functions from OpenCV library as an example, the code bellow will open a window with the image on <code>mat</code> variable, and wait until some key be pressed.</p>
+<div class="code_block">
+<div class="sourceCode" id="cb1"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb1-1"><a href="#cb1-1"></a>cv::imshow(<span class="st">&quot;window&quot;</span>, mat);</span>
+<span id="cb1-2"><a href="#cb1-2"></a>cv::waitKey();</span></code></pre></div>
+<p>C++</p>
+</div>
+<p>It’s simple, it’s works, but it has all the same drawbacks of the conventional “printf debugging” method. The ideal solution would be to get the same result as above, but through an internal GDB command.</p>
+<p>Trying don’t to reinvent the wheel, I have managed to found a GDB extension, created by Stefano Pellegrini, that implements much of the desired functionality to <code>cv::Mat</code> objects. Great! Starting from this version, I have added IplImage support, ROIs support, and some other features, having now a pretty good way of debugging programs which uses OpenCV images.</p>
+<figure>
+<img src="../../media/img/48072cfb-aa5f-4624-8d73-c0f2d69a33ad_2.png" alt /><figcaption>Since the extension is installed, will be a new GDB command to show the image in a window.</figcaption>
+</figure>
+<p>This extension will register a new GDB command, <code>cv_imshow</code>, which receives as argument a variable containing the image that must be shown. Firstly I had considered to use the <a href="http://sourceware.org/gdb/current/onlinedocs/gdb/Pretty-Printing.html#Pretty-Printing">pretty printing</a> mechanism in place of to create a new command, but that would not be the better choice. Even restricted to OpenCV image types, not all formats are compatible to be shown. Therefore is yet useful to have at least the traditional GDB <code>print</code> command as a last resource to inspect a variable, if it cannot be graphically inspected.</p>
+<p>The source code, as well as the instructions to compile and install the extension can be found at the project <a href="https://github.com/renatoGarcia/gdb-imshow">github repository</a>.</p>
+</div>
+<div id="disqus_thread"></div>
+<script type="text/javascript">
+  var disqus_shortname = 'renatogarciablog';
+  var disqus_identifier = '48072cfb-aa5f-4624-8d73-c0f2d69a33ad';
+  <!-- var disqus_url = 'http://renatogarcia.blog.br/{{path}}'; -->
+  var disqus_developer = 0; // if 1 developer mode is on
+  var disqus_title = 'Visualizing OpenCV Images on GDB';
+
+  (function() {
+  var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+  dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+  })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+
+        </div>
+
+      </div>
+    </body>
+</html>
