@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <title>Renato Garcia</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" type="text/css" href="../media/css/style.css" />
+    <link rel="stylesheet" type="text/css" href="../media/css/code.css" />
+  </head>
+  <body>
+    <header id="blog-header">
+      <span class="blog-title">Renato Garcia</span>
+      <nav>
+        <a href="../posts/index.html"><button class="selected">BLOG</button></a>
+        <a href="../projects/index.html"><button>PROJECTS</button></a>
+        <a href="../about.html"><button>ABOUT</button></a>
+      </nav>
+    </header>
+    <main>
+      <header>
+  <h1>Hakyll diagram example</h1>
+  <div class="post_date">2025-12-01</div>
+</header>
+
+<p>This is a usage example of the
+<a href="https://github.com/renatoGarcia/hakyll-diagrams">hakyll-diagrams</a> library, which renders
+interactive diagrams. It is included here because GitHub has restrictions on adding inline
+SVG and JavaScript code to the project README file.</p>
+<p>The code below creates an interactive figure that opens a link when clicking on each
+subpath. The links are embedded within the SVG itself and are created using the Haskell
+<a href="https://diagrams.github.io/">diagrams</a> library. The interactive functionality is achieved
+by combining custom classes assigned to SVG elements in the Haskell code with JavaScript
+code that manipulates the SVG DOM.</p>
+<div class="code_block">
+<div class="sourceCode" id="cb1"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>diagram {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  figcaption<span class="ot">=</span><span class="st">&quot;An interactive figure. It reacts to mouse hover and each part is a link.&quot;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  svg<span class="op">:</span>width<span class="ot">=</span><span class="dv">400</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  hydrogen <span class="ot">=</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mconcat</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>      [ proton</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>      , electron <span class="op">#</span> moveTo p0</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>      , orbit</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>      ]</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    <span class="kw">where</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>      orbit <span class="ot">=</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>        circle <span class="dv">2</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>          <span class="op">#</span> svgAttr <span class="st">&quot;pointer-events&quot;</span> <span class="st">&quot;stroke&quot;</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>          <span class="op">#</span> href <span class="st">&quot;https://en.wikipedia.org/wiki/Atomic_orbital&quot;</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>          <span class="op">#</span> svgClass <span class="st">&quot;svg_orbit&quot;</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>      electron <span class="ot">=</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>        circle <span class="fl">0.1</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>          <span class="op">#</span> fc blue</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>          <span class="op">#</span> lw <span class="dv">0</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>          <span class="op">#</span> href <span class="st">&quot;https://en.wikipedia.org/wiki/Electron&quot;</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>          <span class="op">#</span> svgClass <span class="st">&quot;svg_electron&quot;</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>      proton <span class="ot">=</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>        circle <span class="fl">0.3</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>          <span class="op">#</span> fc red</span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>          <span class="op">#</span> lw <span class="dv">0</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>          <span class="op">#</span> href <span class="st">&quot;https://en.wikipedia.org/wiki/Proton&quot;</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>          <span class="op">#</span> svgClass <span class="st">&quot;svg_proton&quot;</span></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>      p0 <span class="ot">=</span> fromJust <span class="op">$</span> maxTraceP origin (angleV <span class="op">$</span> <span class="dv">3</span><span class="op">/</span><span class="dv">8</span> <span class="op">@@</span> turn) orbit</span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>  background <span class="ot">=</span></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>    roundedRect <span class="dv">5</span> <span class="dv">5</span> <span class="fl">0.1</span></span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>      <span class="op">#</span> lw <span class="dv">0</span></span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>      <span class="op">#</span> fc (sRGB24read <span class="st">&quot;#808080&quot;</span>)</span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>      <span class="op">#</span> opacity <span class="fl">0.15</span></span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a><span class="kw">in</span> hydrogen <span class="op">&lt;&gt;</span> background</span></code></pre></div>
+<p>Haskell</p>
+</div>
+<figure>
+<svg font-size="1" viewBox="0.0 0.0 400.0 400.0" stroke="rgb(0,0,0)" xmlns="http://www.w3.org/2000/svg" width="400.0000" stroke-opacity="1" height="400.0000" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink"><defs></defs><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(128,128,128)" stroke="rgb(0,0,0)" stroke-linecap="butt" opacity="0.15" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 400.0000,392.0000 v -384.0000 c 0.0000,-4.4183 -3.5817,-8.0000 -8.0000 -8.0000h -384.0000 c -4.4183,-0.0000 -8.0000,3.5817 -8.0000 8.0000v 384.0000 c -0.0000,4.4183 3.5817,8.0000 8.0000 8.0000h 384.0000 c 4.4183,0.0000 8.0000,-3.5817 8.0000 -8.0000Z"></path></g><a xlink:href="https://en.wikipedia.org/wiki/Atomic_orbital" class="svg_orbit"><g stroke-linejoin="miter" fill-opacity="0.0" fill="rgb(0,0,0)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" pointer-events="stroke" stroke-width="1.6"><path d="M 360.0000,200.0000 c 0.0000,-88.3656 -71.6344,-160.0000 -160.0000 -160.0000c -88.3656,-0.0000 -160.0000,71.6344 -160.0000 160.0000c -0.0000,88.3656 71.6344,160.0000 160.0000 160.0000c 88.3656,0.0000 160.0000,-71.6344 160.0000 -160.0000Z"></path></g></a><a xlink:href="https://en.wikipedia.org/wiki/Electron" class="svg_electron"><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(0,0,255)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 94.8629,86.8629 c 0.0000,-4.4183 -3.5817,-8.0000 -8.0000 -8.0000c -4.4183,-0.0000 -8.0000,3.5817 -8.0000 8.0000c -0.0000,4.4183 3.5817,8.0000 8.0000 8.0000c 4.4183,0.0000 8.0000,-3.5817 8.0000 -8.0000Z"></path></g></a><a xlink:href="https://en.wikipedia.org/wiki/Proton" class="svg_proton"><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(255,0,0)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 224.0000,200.0000 c 0.0000,-13.2548 -10.7452,-24.0000 -24.0000 -24.0000c -13.2548,-0.0000 -24.0000,10.7452 -24.0000 24.0000c -0.0000,13.2548 10.7452,24.0000 24.0000 24.0000c 13.2548,0.0000 24.0000,-10.7452 24.0000 -24.0000Z"></path></g></a></svg>
+<figcaption>An interactive figure. It reacts to mouse hover and each part is a link.</figcaption>
+</figure>
+<details>
+<summary>
+Javascript code used to animate the figure above:
+</summary>
+<div class="code_block">
+<div class="sourceCode" id="cb2"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="bu">document</span><span class="op">.</span><span class="fu">addEventListener</span>(<span class="st">&quot;DOMContentLoaded&quot;</span><span class="op">,</span> () <span class="kw">=&gt;</span> {</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> electrons <span class="op">=</span> <span class="bu">Array</span><span class="op">.</span><span class="fu">from</span>(<span class="bu">document</span><span class="op">.</span><span class="fu">querySelectorAll</span>(<span class="st">&quot;.svg_electron&quot;</span>))<span class="op">;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> orbits    <span class="op">=</span> <span class="bu">Array</span><span class="op">.</span><span class="fu">from</span>(<span class="bu">document</span><span class="op">.</span><span class="fu">querySelectorAll</span>(<span class="st">&quot;.svg_orbit&quot;</span>))<span class="op">;</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> protons   <span class="op">=</span> <span class="bu">Array</span><span class="op">.</span><span class="fu">from</span>(<span class="bu">document</span><span class="op">.</span><span class="fu">querySelectorAll</span>(<span class="st">&quot;.svg_proton&quot;</span>))<span class="op">;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> groups <span class="op">=</span> [</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    { <span class="dt">name</span><span class="op">:</span> <span class="st">&quot;electron&quot;</span><span class="op">,</span> <span class="dt">elements</span><span class="op">:</span> electrons }<span class="op">,</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    { <span class="dt">name</span><span class="op">:</span> <span class="st">&quot;orbit&quot;</span><span class="op">,</span>    <span class="dt">elements</span><span class="op">:</span> orbits }<span class="op">,</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    { <span class="dt">name</span><span class="op">:</span> <span class="st">&quot;proton&quot;</span><span class="op">,</span>   <span class="dt">elements</span><span class="op">:</span> protons }</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>  ]<span class="op">;</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>  <span class="kw">function</span> <span class="fu">fadeOut</span>(list) {</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    list<span class="op">.</span><span class="fu">forEach</span>(el <span class="kw">=&gt;</span> {</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>      el<span class="op">.</span><span class="at">style</span><span class="op">.</span><span class="at">transition</span> <span class="op">=</span> <span class="st">&quot;opacity 0.3s ease&quot;</span><span class="op">;</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>      el<span class="op">.</span><span class="at">style</span><span class="op">.</span><span class="at">opacity</span> <span class="op">=</span> <span class="st">&quot;0.2&quot;</span><span class="op">;</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    })<span class="op">;</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>  <span class="kw">function</span> <span class="fu">fadeIn</span>(list) {</span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>    list<span class="op">.</span><span class="fu">forEach</span>(el <span class="kw">=&gt;</span> {</span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>      el<span class="op">.</span><span class="at">style</span><span class="op">.</span><span class="at">transition</span> <span class="op">=</span> <span class="st">&quot;opacity 0.3s ease&quot;</span><span class="op">;</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>      el<span class="op">.</span><span class="at">style</span><span class="op">.</span><span class="at">opacity</span> <span class="op">=</span> <span class="st">&quot;1&quot;</span><span class="op">;</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>    })<span class="op">;</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>  <span class="kw">function</span> <span class="fu">attachHoverHandlers</span>(group<span class="op">,</span> others) {</span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>    group<span class="op">.</span><span class="at">elements</span><span class="op">.</span><span class="fu">forEach</span>(el <span class="kw">=&gt;</span> {</span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>      el<span class="op">.</span><span class="fu">addEventListener</span>(<span class="st">&quot;mouseenter&quot;</span><span class="op">,</span> () <span class="kw">=&gt;</span> {</span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>        others<span class="op">.</span><span class="fu">forEach</span>(g <span class="kw">=&gt;</span> <span class="fu">fadeOut</span>(g<span class="op">.</span><span class="at">elements</span>))<span class="op">;</span></span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>      })<span class="op">;</span></span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a>      el<span class="op">.</span><span class="fu">addEventListener</span>(<span class="st">&quot;mouseleave&quot;</span><span class="op">,</span> () <span class="kw">=&gt;</span> {</span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a>        others<span class="op">.</span><span class="fu">forEach</span>(g <span class="kw">=&gt;</span> <span class="fu">fadeIn</span>(g<span class="op">.</span><span class="at">elements</span>))<span class="op">;</span></span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a>      })<span class="op">;</span></span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>    })<span class="op">;</span></span>
+<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-37"><a href="#cb2-37" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Attach handlers for each group</span></span>
+<span id="cb2-38"><a href="#cb2-38" aria-hidden="true" tabindex="-1"></a>  groups<span class="op">.</span><span class="fu">forEach</span>((group<span class="op">,</span> _<span class="op">,</span> all) <span class="kw">=&gt;</span> {</span>
+<span id="cb2-39"><a href="#cb2-39" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> others <span class="op">=</span> all<span class="op">.</span><span class="fu">filter</span>(g <span class="kw">=&gt;</span> g <span class="op">!==</span> group)<span class="op">;</span></span>
+<span id="cb2-40"><a href="#cb2-40" aria-hidden="true" tabindex="-1"></a>    <span class="fu">attachHoverHandlers</span>(group<span class="op">,</span> others)<span class="op">;</span></span>
+<span id="cb2-41"><a href="#cb2-41" aria-hidden="true" tabindex="-1"></a>  })<span class="op">;</span></span>
+<span id="cb2-42"><a href="#cb2-42" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div>
+<p>Javascript</p>
+</div>
+</details>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const electrons = Array.from(document.querySelectorAll(".svg_electron"));
+  const orbits    = Array.from(document.querySelectorAll(".svg_orbit"));
+  const protons   = Array.from(document.querySelectorAll(".svg_proton"));
+
+  const groups = [
+    { name: "electron", elements: electrons },
+    { name: "orbit",    elements: orbits },
+    { name: "proton",   elements: protons }
+  ];
+
+  function fadeOut(list) {
+    list.forEach(el => {
+      el.style.transition = "opacity 0.3s ease";
+      el.style.opacity = "0.2";
+    });
+  }
+
+  function fadeIn(list) {
+    list.forEach(el => {
+      el.style.transition = "opacity 0.3s ease";
+      el.style.opacity = "1";
+    });
+  }
+
+  function attachHoverHandlers(group, others) {
+    group.elements.forEach(el => {
+      el.addEventListener("mouseenter", () => {
+        others.forEach(g => fadeOut(g.elements));
+      });
+      el.addEventListener("mouseleave", () => {
+        others.forEach(g => fadeIn(g.elements));
+      });
+    });
+  }
+
+  // Attach handlers for each group
+  groups.forEach((group, _, all) => {
+    const others = all.filter(g => g !== group);
+    attachHoverHandlers(group, others);
+  });
+});
+</script>
+
+<section id="disqus_thread">
+  <script type="text/javascript">
+    var disqus_shortname = 'renatogarciablog';
+    var disqus_identifier = 'ea7f31d1-1b43-4a27-b147-d65b9d467e6d';
+    var disqus_title = 'Hakyll diagram example';
+
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'https://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+  </script>
+  <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</section>
+
+    </main>
+  </body>
+</html>
