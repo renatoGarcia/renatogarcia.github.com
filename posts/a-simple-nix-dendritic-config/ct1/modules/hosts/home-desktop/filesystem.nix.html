@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <title>Renato Garcia Blog</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="../../../../../../media/css/style.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../../../media/css/code.css" />
+  </head>
+  <body>
+    <header id="blog-header">
+      <span class="blog-title">Renato Garcia</span>
+      <nav>
+        <a href="../../../../../../posts/index.html" class="nav-button selected">BLOG</a>
+        <a href="../../../../../../projects/index.html" class="nav-button">PROJECTS</a>
+        <a href="../../../../../../about.html" class="nav-button">ABOUT</a>
+      </nav>
+    </header>
+    <main>
+      <header>
+  <a href="javascript:history.back()" class="back-link">← Back</a>
+  <h2>modules/hosts/home-desktop/filesystem.nix</h2>
+</header>
+
+<div class="code_block">
+<div class="sourceCode" id="cb1"><pre class="sourceCode nix"><code class="sourceCode nix"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="va">flake</span>.<span class="va">modules</span>.<span class="va">nixos</span>.<span class="va">home-desktop</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="va">fileSystems</span>.<span class="st">&quot;/&quot;</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>      <span class="va">device</span> <span class="op">=</span> <span class="st">&quot;/dev/disk/by-uuid/9b54cf1c-c570-4779-97a2-897ae70f44c1&quot;</span><span class="op">;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>      <span class="va">fsType</span> <span class="op">=</span> <span class="st">&quot;ext4&quot;</span><span class="op">;</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="op">};</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="va">fileSystems</span>.<span class="st">&quot;/boot&quot;</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>      <span class="va">device</span> <span class="op">=</span> <span class="st">&quot;/dev/disk/by-uuid/F783-6A4F&quot;</span><span class="op">;</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>      <span class="va">fsType</span> <span class="op">=</span> <span class="st">&quot;vfat&quot;</span><span class="op">;</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    <span class="op">};</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    <span class="va">fileSystems</span>.<span class="st">&quot;/home&quot;</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>      <span class="va">device</span> <span class="op">=</span> <span class="st">&quot;/dev/disk/by-uuid/8385c5a1-0027-467a-8b19-09325c0eab7b&quot;</span><span class="op">;</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>      <span class="va">fsType</span> <span class="op">=</span> <span class="st">&quot;ext4&quot;</span><span class="op">;</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    <span class="op">};</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    <span class="va">fileSystems</span>.<span class="st">&quot;/mnt/archives&quot;</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>      <span class="va">device</span> <span class="op">=</span> <span class="st">&quot;/dev/disk/by-uuid/dfdb139f-3016-4801-b631-0fadb9d14cfe&quot;</span><span class="op">;</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>      <span class="va">fsType</span> <span class="op">=</span> <span class="st">&quot;ext4&quot;</span><span class="op">;</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>    <span class="op">};</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>    <span class="va">swapDevices</span> <span class="op">=</span> <span class="op">[</span> <span class="op">{</span> <span class="va">device</span> <span class="op">=</span> <span class="st">&quot;/dev/disk/by-uuid/acce19da-c19f-4a2a-8be6-51f0ac4cb5b0&quot;</span><span class="op">;</span> <span class="op">}</span> <span class="op">];</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>  <span class="op">};</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Nix</p>
+</div>
+
+<script src="../../../../../../media/js/line-highlight.js"></script>
+
+    </main>
+  </body>
+</html>

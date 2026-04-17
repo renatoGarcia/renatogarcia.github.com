@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <title>Renato Garcia Blog</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="../../../../../../media/css/style.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../../../media/css/code.css" />
+  </head>
+  <body>
+    <header id="blog-header">
+      <span class="blog-title">Renato Garcia</span>
+      <nav>
+        <a href="../../../../../../posts/index.html" class="nav-button selected">BLOG</a>
+        <a href="../../../../../../projects/index.html" class="nav-button">PROJECTS</a>
+        <a href="../../../../../../about.html" class="nav-button">ABOUT</a>
+      </nav>
+    </header>
+    <main>
+      <header>
+  <a href="javascript:history.back()" class="back-link">← Back</a>
+  <h2>modules/hosts/renato-notebook/default.nix</h2>
+</header>
+
+<div class="code_block">
+<div class="sourceCode" id="cb1"><pre class="sourceCode nix"><code class="sourceCode nix"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="va">self</span><span class="op">,</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="va">inputs</span><span class="op">,</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="op">...</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span>:</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  <span class="va">flake</span>.<span class="va">modules</span>.<span class="va">nixos</span>.<span class="va">renato-notebook</span> <span class="op">=</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span> <span class="va">pkgs</span><span class="op">,</span> <span class="va">config</span><span class="op">,</span> <span class="op">...</span> <span class="op">}</span>:</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>      <span class="va">imports</span> <span class="op">=</span> <span class="kw">with</span> self<span class="op">.</span>modules<span class="op">.</span>nixos<span class="op">;</span> <span class="op">[</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>        base</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>        renatofg</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>        helena</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>      <span class="op">];</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>      <span class="va">nixpkgs</span>.<span class="va">hostPlatform</span> <span class="op">=</span> <span class="st">&quot;x86_64-linux&quot;</span><span class="op">;</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>      <span class="va">boot</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>        <span class="va">initrd</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>          <span class="va">availableKernelModules</span> <span class="op">=</span> <span class="op">[</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;xhci_pci&quot;</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;thunderbolt&quot;</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;vmd&quot;</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;nvme&quot;</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;usb_storage&quot;</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;sd_mod&quot;</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;rtsx_pci_sdmmc&quot;</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>          <span class="op">];</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>          <span class="va">kernelModules</span> <span class="op">=</span> <span class="op">[</span> <span class="op">];</span></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>        <span class="op">};</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>        <span class="va">kernelModules</span> <span class="op">=</span> <span class="op">[</span> <span class="st">&quot;kvm-intel&quot;</span> <span class="op">];</span></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>        <span class="va">kernelParams</span> <span class="op">=</span> <span class="op">[</span> <span class="st">&quot;i915.enable_guc=3&quot;</span> <span class="op">];</span></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>        <span class="va">extraModulePackages</span> <span class="op">=</span> <span class="op">[</span> <span class="op">];</span></span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>      <span class="op">};</span></span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>      <span class="va">networking</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>        <span class="va">hostName</span> <span class="op">=</span> <span class="st">&quot;renato-notebook&quot;</span><span class="op">;</span></span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>        <span class="va">interfaces</span>.<span class="va">wlp0s20f3</span>.<span class="va">useDHCP</span> <span class="op">=</span> <span class="cn">false</span><span class="op">;</span></span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a>      <span class="op">};</span></span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a>      <span class="va">hardware</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a>        <span class="va">acpilight</span>.<span class="va">enable</span> <span class="op">=</span> <span class="cn">true</span><span class="op">;</span></span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a>        <span class="va">cpu</span>.<span class="va">intel</span>.<span class="va">updateMicrocode</span> <span class="op">=</span> config<span class="op">.</span>hardware<span class="op">.</span>enableRedistributableFirmware<span class="op">;</span></span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a>      <span class="op">};</span></span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a>      <span class="va">services</span>.<span class="va">xserver</span>.<span class="va">displayManager</span>.<span class="va">setupCommands</span> <span class="op">=</span> <span class="st">''</span></span>
+<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a><span class="st">        </span><span class="sc">${</span>pkgs<span class="op">.</span>xorg<span class="op">.</span>xrandr<span class="sc">}</span><span class="st">/bin/xrandr --output &quot;eDP-1&quot; --mode &quot;1920x1200&quot;</span></span>
+<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a><span class="st">      ''</span><span class="op">;</span></span>
+<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a>    <span class="op">};</span></span>
+<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a>  <span class="va">flake</span>.<span class="va">nixosConfigurations</span>.<span class="va">renato-notebook</span> <span class="op">=</span> inputs<span class="op">.</span>nixpkgs<span class="op">.</span>lib<span class="op">.</span>nixosSystem <span class="op">{</span></span>
+<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a>    <span class="va">modules</span> <span class="op">=</span> <span class="op">[</span></span>
+<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a>      self<span class="op">.</span>modules<span class="op">.</span>nixos<span class="op">.</span>renato-notebook</span>
+<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a>      inputs<span class="op">.</span>home-manager<span class="op">.</span>nixosModules<span class="op">.</span>home-manager</span>
+<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a>      <span class="op">{</span></span>
+<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a>        <span class="va">home-manager</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a>          <span class="va">useGlobalPkgs</span> <span class="op">=</span> <span class="cn">true</span><span class="op">;</span></span>
+<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a>          <span class="va">users</span>.<span class="va">renatofg</span> <span class="op">=</span> self<span class="op">.</span>modules<span class="op">.</span>homeManager<span class="op">.</span>renatofg<span class="op">;</span></span>
+<span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a>        <span class="op">};</span></span>
+<span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a>      <span class="op">}</span></span>
+<span id="cb1-64"><a href="#cb1-64" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-65"><a href="#cb1-65" aria-hidden="true" tabindex="-1"></a>      <span class="op">{</span></span>
+<span id="cb1-66"><a href="#cb1-66" aria-hidden="true" tabindex="-1"></a>        <span class="va">nixpkgs</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb1-67"><a href="#cb1-67" aria-hidden="true" tabindex="-1"></a>          <span class="va">config</span>.<span class="va">allowUnfree</span> <span class="op">=</span> <span class="cn">true</span><span class="op">;</span></span>
+<span id="cb1-68"><a href="#cb1-68" aria-hidden="true" tabindex="-1"></a>          <span class="va">overlays</span> <span class="op">=</span> <span class="op">[</span> self<span class="op">.</span>overlays<span class="op">.</span>default <span class="op">];</span></span>
+<span id="cb1-69"><a href="#cb1-69" aria-hidden="true" tabindex="-1"></a>        <span class="op">};</span></span>
+<span id="cb1-70"><a href="#cb1-70" aria-hidden="true" tabindex="-1"></a>      <span class="op">}</span></span>
+<span id="cb1-71"><a href="#cb1-71" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-72"><a href="#cb1-72" aria-hidden="true" tabindex="-1"></a>    <span class="op">];</span></span>
+<span id="cb1-73"><a href="#cb1-73" aria-hidden="true" tabindex="-1"></a>  <span class="op">};</span></span>
+<span id="cb1-74"><a href="#cb1-74" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-75"><a href="#cb1-75" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Nix</p>
+</div>
+
+<script src="../../../../../../media/js/line-highlight.js"></script>
+
+    </main>
+  </body>
+</html>

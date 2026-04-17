@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <title>Renato Garcia Blog</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="../media/css/style.css" />
+    <link rel="stylesheet" type="text/css" href="../media/css/code.css" />
+  </head>
+  <body>
+    <header id="blog-header">
+      <span class="blog-title">Renato Garcia</span>
+      <nav>
+        <a href="../posts/index.html" class="nav-button selected">BLOG</a>
+        <a href="../projects/index.html" class="nav-button">PROJECTS</a>
+        <a href="../about.html" class="nav-button">ABOUT</a>
+      </nav>
+    </header>
+    <main>
+      <header>
+  <h1>A simple Nix dendritic config</h1>
+  <div class="post_date">2026-04-17</div>
+</header>
+
+<p>I run NixOS on both my desktop and laptop. Until a few weeks ago, all my Nix code lived in
+a single <code>configuration.nix</code> file that accepted the machine hostname as an argument. Over
+time, entropy did its work, and that file turned into a spaghetti mess.</p>
+<p>After seeing the <a href="https://github.com/mightyiam/dendritic">Nix Dendritic Pattern</a> mentioned
+in several places, I wondered whether it would make sense for my rather simple setup, or
+if it would be overkill. Spoiler: even for my simple setup, it helped me better organize
+my system configuration.</p>
+<p>There are great guides, posts, and examples in the wild to learn about the dendritic
+pattern and its components. Nevertheless, I had a hard time applying the abstract concepts
+to my concrete problem. I often had to dive into implementation code to fully understand
+some parts.</p>
+<p>In this post, I explain how I used the dendritic pattern to solve <strong>my particular
+problem</strong>: NixOS + Home Manager on both a desktop and a laptop, with two users. I trimmed
+my configuration to the minimum while keeping all features. The goal is a complete but
+simple example that we can walk through and explain in full. I hope that after grasping
+this example, you should be able to create a solution tailored to your own requirements
+with the help of other sources.</p>
+<p>I assume familiarity with <a href="https://nixos.org/">Nix</a>, <a href="https://nixos.org/">NixOS</a>, and
+<a href="https://nix.dev/concepts/flakes">flakes</a>.</p>
+<p>All the code implementing the systems configuration is available here:</p>
+<pre class="file-tree" id="file-tree">
+<span class="dir">/etc/nixos</span>
+├── <a href="a-simple-nix-dendritic-config/ct1/flake.nix.html">flake.nix</a>
+└── <span class="dir">modules</span>
+    ├── <span class="dir">base</span>
+    │   ├── <a href="a-simple-nix-dendritic-config/ct1/modules/base/configuration.nix.html">configuration.nix</a>
+    │   ├── <a href="a-simple-nix-dendritic-config/ct1/modules/base/overlays.nix.html">overlays.nix</a>
+    │   └── <a href="a-simple-nix-dendritic-config/ct1/modules/base/packages.nix.html">packages.nix</a>
+    ├── <a href="a-simple-nix-dendritic-config/ct1/modules/flake-parts.nix.html">flake-parts.nix</a>
+    ├── <span class="dir">hosts</span>
+    │   ├── <span class="dir">home-desktop</span>
+    │   │   ├── <a href="a-simple-nix-dendritic-config/ct1/modules/hosts/home-desktop/default.nix.html">default.nix</a>
+    │   │   └── <a href="a-simple-nix-dendritic-config/ct1/modules/hosts/home-desktop/filesystem.nix.html">filesystem.nix</a>
+    │   └── <span class="dir">renato-notebook</span>
+    │       ├── <a href="a-simple-nix-dendritic-config/ct1/modules/hosts/renato-notebook/default.nix.html">default.nix</a>
+    │       └── <a href="a-simple-nix-dendritic-config/ct1/modules/hosts/renato-notebook/filesystem.nix.html">filesystem.nix</a>
+    └── <span class="dir">users</span>
+        ├── <a href="a-simple-nix-dendritic-config/ct1/modules/users/helena.nix.html">helena.nix</a>
+        └── <span class="dir">renatofg</span>
+            ├── <a href="a-simple-nix-dendritic-config/ct1/modules/users/renatofg/default.nix.html">default.nix</a>
+            └── <span class="dir">_dotfiles</span>
+                └── <a href="a-simple-nix-dendritic-config/ct1/modules/users/renatofg/_dotfiles/starship.toml.html">starship.toml</a>
+</pre>
+<p>We’ll cover the key concepts first, then walk through the code.</p>
+<p><strong>Contents</strong></p>
+<ul>
+<li><a href="#key-concepts">Key concepts</a>
+<ul>
+<li><a href="#flake">Flake</a></li>
+<li><a href="#module">Module</a></li>
+<li><a href="#nixos-modules">NixOS modules</a></li>
+<li><a href="#home-manager-modules">Home Manager modules</a></li>
+<li><a href="#flake-parts-modules">Flake Parts modules</a></li>
+</ul></li>
+<li><a href="#code-walkthrough">Code walkthrough</a>
+<ul>
+<li><a href="#flake.nix">flake.nix</a></li>
+<li><a href="#w-flake-parts-modules">Flake Parts modules</a></li>
+<li><a href="#w-nixos-modules">NixOS modules</a></li>
+<li><a href="#w-home-manager-modules">Home Manager modules</a></li>
+<li><a href="#defining-a-host">Defining a host</a></li>
+</ul></li>
+<li><a href="#wrapping-it-up-dendritic-pattern">Wrapping it up: Dendritic Pattern</a></li>
+</ul>
+<h2 id="key-concepts">Key concepts</h2>
+<p>In short: we organize our configuration as a collection of <a href="#module">modules</a> that get
+merged together.</p>
+<p>But to understand how this works, we first need to cover a few core concepts, the building
+blocks we use to structure our system configuration following the <a href="#wrapping-it-up-dendritic-pattern">dendritic
+pattern</a>.</p>
+<h3 id="flake">Flake</h3>
+<p>We use all <a href="#file-tree">those files</a> to structure our NixOS system configuration. At the
+end of the day, all that code gets evaluated into a <a href="https://nixos.wiki/wiki/flakes#Output_schema">flake output
+set</a>. Specifically, the system configuration
+lives under the <code>nixosConfigurations.&lt;hostname&gt;</code> attribute.</p>
+<figure>
+<svg font-size="1" viewBox="0.0 0.0 800.0 213.75281970115077" stroke="rgb(0,0,0)" xmlns="http://www.w3.org/2000/svg" width="800.0000" stroke-opacity="1" height="213.7528" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink"><defs></defs><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(128,128,128)" stroke="rgb(0,0,0)" stroke-linecap="butt" opacity="0.15" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 800.0000,213.7528 l -0.0000,-213.7528 h -800.0000 l -0.0000,213.7528 Z"></path></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(129,161,193)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 772.0835,140.3762 l -0.0000,-66.9997 h -195.4157 l -0.0000,66.9997 Z"></path></g><g stroke-linejoin="miter" fill-opacity="1.0" font-size="27.916532395183275px" fill="rgb(46,52,64)" stroke="rgb(0,0,0)" font-family="Inconsolata" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="1.6540967602213392"><text transform="matrix(1.0000,0.0000,0.0000,1.0000,591.4635,127.8138)" stroke="none" dominant-baseline="alphabetic" text-anchor="start">outputs set</text></g><g stroke-linejoin="miter" fill-opacity="1.0" font-size="27.916532395183275px" fill="rgb(46,52,64)" stroke="rgb(0,0,0)" font-family="Inconsolata" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="1.6540967602213392"><text transform="matrix(1.0000,0.0000,0.0000,1.0000,636.6883,105.4806)" stroke="none" dominant-baseline="alphabetic" text-anchor="start">flake</text></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(208,135,112)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 465.0016,106.8764 l -78.9599,-78.9599 l -78.9599,78.9599 l 78.9599,78.9599 Z"></path></g><g stroke-linejoin="miter" fill-opacity="1.0" font-size="27.916532395183275px" fill="rgb(46,52,64)" stroke="rgb(0,0,0)" font-family="Inconsolata" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="1.6540967602213392"><text transform="matrix(1.0000,0.0000,0.0000,1.0000,333.2795,116.6472)" stroke="none" dominant-baseline="alphabetic" text-anchor="start">mkFlake</text></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(129,161,193)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 195.4157,140.3762 l -0.0000,-66.9997 h -167.4992 l -0.0000,66.9997 Z"></path></g><g stroke-linejoin="miter" fill-opacity="1.0" font-size="27.916532395183275px" fill="rgb(46,52,64)" stroke="rgb(0,0,0)" font-family="Inconsolata" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="1.6540967602213392"><text transform="matrix(1.0000,0.0000,0.0000,1.0000,43.8290,127.8138)" stroke="none" dominant-baseline="alphabetic" text-anchor="start">Nix files</text></g><g stroke-linejoin="miter" fill-opacity="1.0" font-size="27.916532395183275px" fill="rgb(46,52,64)" stroke="rgb(0,0,0)" font-family="Inconsolata" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="1.6540967602213392"><text transform="matrix(1.0000,0.0000,0.0000,1.0000,43.8290,105.4806)" stroke="none" dominant-baseline="alphabetic" text-anchor="start">Dendritic</text></g><g stroke-linejoin="miter" fill-opacity="0.0" fill="rgb(0,0,0)" stroke="rgb(216,222,233)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="1.6540967602213392"><path d="M 201.6186,106.8764 h 84.7871 "></path></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 300.8790,106.8764 l -16.9306,-5.5011 l 2.8921,5.5011 l -2.8921,5.5011 Z"></path></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 286.8405,106.8764 h -0.4348 v -0.8270 l 0.4348,0.8270 h -0.4348 v 0.8270 Z"></path></g><g stroke-linejoin="miter" fill-opacity="0.0" fill="rgb(0,0,0)" stroke="rgb(216,222,233)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="1.6540967602213392"><path d="M 471.2045,106.8764 h 84.7871 "></path></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 570.4649,106.8764 l -16.9306,-5.5011 l 2.8921,5.5011 l -2.8921,5.5011 Z"></path></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 556.4263,106.8764 h -0.4348 v -0.8270 l 0.4348,0.8270 h -0.4348 v 0.8270 Z"></path></g></svg>
+<figcaption>All code structured following the dendritic pattern will be transformed to a flake output set.</figcaption>
+</figure>
+<p>We write our configuration as <a href="#flake-parts-modules">Flake Parts modules</a> spread across
+multiple <code>.nix</code> files following the dendritic pattern. These files are imported and passed
+to the <code>mkFlake</code> function, which evaluates them into the final flake <code>outputs</code>.</p>
+<h3 id="module">Module</h3>
+<p>The module is the fundamental unit upon which everything else is built. We break our
+configuration into “module files,” where each file configures a specific feature. How
+broad or narrow each feature is, and how many you create, is up to you. We’ll discuss this
+further in the following sections.</p>
+<p>At its core, a module is a function receiving an <em>attribute set</em> as input and evaluating
+to another <em>attribute set</em>. Optionally, instead of being a function, a module can be just
+a plain attribute set (like <a href="#module-c">Module C</a>). In this case, a module <code>{ A }</code> will
+behave the same as the constant function <code>args: { A }</code>.</p>
+<p>Once we split our configuration into multiple modules, we can run <code>nixos-rebuild</code> to
+reconfigure our NixOS machine. The module system combines all those modules into one. When
+evaluated, it produces the final merged attribute set.</p>
+<figure>
+<svg font-size="1" viewBox="0.0 0.0 800.0 339.46667490723695" stroke="rgb(0,0,0)" xmlns="http://www.w3.org/2000/svg" width="800.0000" stroke-opacity="1" height="339.4667" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink"><defs></defs><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(128,128,128)" stroke="rgb(0,0,0)" stroke-linecap="butt" opacity="0.15" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 800.0000,339.4667 l -0.0000,-339.4667 h -800.0000 l -0.0000,339.4667 Z"></path></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(129,161,193)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 771.2316,204.2554 l -0.0000,-69.0441 h -316.4520 l -0.0000,69.0441 Z"></path></g><g stroke-linejoin="miter" fill-opacity="1.0" font-size="28.76836228027432px" fill="rgb(46,52,64)" stroke="rgb(0,0,0)" font-family="Inconsolata" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="2.084507960841751"><text transform="matrix(1.0000,0.0000,0.0000,1.0000,496.4938,179.8023)" stroke="none" dominant-baseline="alphabetic" text-anchor="start">A ∪ B ∪ ... ∪ n</text></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(208,135,112)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 368.4746,169.7333 l -69.1638,-69.1638 l -69.1638,69.1638 l 69.1638,69.1638 Z"></path></g><g stroke-linejoin="miter" fill-opacity="1.0" font-size="28.76836228027432px" fill="rgb(46,52,64)" stroke="rgb(0,0,0)" font-family="Inconsolata" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="2.084507960841751"><text transform="matrix(1.0000,0.0000,0.0000,1.0000,260.4734,179.8023)" stroke="none" dominant-baseline="alphabetic" text-anchor="start">Merge</text></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(129,161,193)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 143.8418,310.6983 l -0.0000,-69.0441 h -115.0734 l -0.0000,69.0441 Z"></path></g><g stroke-linejoin="miter" fill-opacity="1.0" font-size="28.76836228027432px" fill="rgb(46,52,64)" stroke="rgb(0,0,0)" font-family="Inconsolata" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="2.084507960841751"><text transform="matrix(1.0000,0.0000,0.0000,1.0000,78.5376,286.2452)" stroke="none" dominant-baseline="alphabetic" text-anchor="start">n</text></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(129,161,193)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 89.1819,227.2701 c 0.0000,-1.5888 -1.2880,-2.8768 -2.8768 -2.8768c -1.5888,-0.0000 -2.8768,1.2880 -2.8768 2.8768c -0.0000,1.5888 1.2880,2.8768 2.8768 2.8768c 1.5888,0.0000 2.8768,-1.2880 2.8768 -2.8768Z"></path></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(129,161,193)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 89.1819,210.0090 c 0.0000,-1.5888 -1.2880,-2.8768 -2.8768 -2.8768c -1.5888,-0.0000 -2.8768,1.2880 -2.8768 2.8768c -0.0000,1.5888 1.2880,2.8768 2.8768 2.8768c 1.5888,0.0000 2.8768,-1.2880 2.8768 -2.8768Z"></path></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(129,161,193)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 89.1819,192.7480 c 0.0000,-1.5888 -1.2880,-2.8768 -2.8768 -2.8768c -1.5888,-0.0000 -2.8768,1.2880 -2.8768 2.8768c -0.0000,1.5888 1.2880,2.8768 2.8768 2.8768c 1.5888,0.0000 2.8768,-1.2880 2.8768 -2.8768Z"></path></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(129,161,193)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 143.8418,178.3638 l -0.0000,-69.0441 h -115.0734 l -0.0000,69.0441 Z"></path></g><g stroke-linejoin="miter" fill-opacity="1.0" font-size="28.76836228027432px" fill="rgb(46,52,64)" stroke="rgb(0,0,0)" font-family="Inconsolata" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="2.084507960841751"><text transform="matrix(1.0000,0.0000,0.0000,1.0000,78.5376,153.9107)" stroke="none" dominant-baseline="alphabetic" text-anchor="start">B</text></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(129,161,193)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 143.8418,97.8124 l -0.0000,-69.0441 h -115.0734 l -0.0000,69.0441 Z"></path></g><g stroke-linejoin="miter" fill-opacity="1.0" font-size="28.76836228027432px" fill="rgb(46,52,64)" stroke="rgb(0,0,0)" font-family="Inconsolata" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="2.084507960841751"><text transform="matrix(1.0000,0.0000,0.0000,1.0000,78.5376,73.3593)" stroke="none" dominant-baseline="alphabetic" text-anchor="start">A</text></g><g stroke-linejoin="miter" fill-opacity="0.0" fill="rgb(0,0,0)" stroke="rgb(216,222,233)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="2.084507960841751"><path d="M 150.5612,67.2847 l 91.7698,54.5524 "></path></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 258.0095,131.1571 l -14.7980,-16.8615 l -0.4095,7.8215 l -6.6753,4.0968 Z"></path></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 242.8020,122.1171 l -0.4710,-0.2800 l 0.5326,-0.8959 l -0.0616,1.1759 l -0.4710,-0.2800 l -0.5326,0.8959 Z"></path></g><g stroke-linejoin="miter" fill-opacity="0.0" fill="rgb(0,0,0)" stroke="rgb(216,222,233)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="2.084507960841751"><path d="M 151.3290,146.0880 l 53.8604,16.1581 "></path></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 222.6597,167.4872 l -18.4443,-12.7711 l 1.4989,7.6874 l -5.4830,5.5929 Z"></path></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 205.7143,162.4036 l -0.5248,-0.1575 l 0.2995,-0.9983 l 0.2253,1.1557 l -0.5248,-0.1575 l -0.2995,0.9983 Z"></path></g><g stroke-linejoin="miter" fill-opacity="0.0" fill="rgb(0,0,0)" stroke="rgb(216,222,233)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="2.084507960841751"><path d="M 150.5612,272.1820 l 91.7698,-54.5524 "></path></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 258.0095,208.3096 l -21.8828,4.9432 l 6.6753,4.0968 l 0.4095,7.8215 Z"></path></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 242.8020,217.3496 l -0.4710,0.2800 l -0.5326,-0.8959 l 1.0036,0.6159 l -0.4710,0.2800 l 0.5326,0.8959 Z"></path></g><g stroke-linejoin="miter" fill-opacity="0.0" fill="rgb(0,0,0)" stroke="rgb(216,222,233)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="2.084507960841751"><path d="M 150.5612,272.1820 l 91.7698,-54.5524 "></path></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 258.0095,208.3096 l -21.8828,4.9432 l 6.6753,4.0968 l 0.4095,7.8215 Z"></path></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 242.8020,217.3496 l -0.4710,0.2800 l -0.5326,-0.8959 l 1.0036,0.6159 l -0.4710,0.2800 l 0.5326,0.8959 Z"></path></g><g stroke-linejoin="miter" fill-opacity="0.0" fill="rgb(0,0,0)" stroke="rgb(216,222,233)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="2.084507960841751"><path d="M 376.2915,169.7333 l 52.4318,-0.0000 "></path></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 446.9627,169.7333 l -21.3361,-6.9325 l 3.6446,6.9325 l -3.6446,6.9325 Z"></path></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 429.2712,169.7333 l -0.5479,0.0000 l -0.0000,-1.0423 l 0.5479,1.0423 l -0.5479,0.0000 l 0.0000,1.0423 Z"></path></g></svg>
+<figcaption>During evaluation, multiple modules are merged into one, producing an attribute set that is the union of all individual attributes.</figcaption>
+</figure>
+<p>When merging modules, nested sets merge recursively (attribute by attribute), and lists
+are concatenated. However, if two modules define the same scalar value, it raises an
+error.</p>
+<p>If we have these three modules:</p>
+<figure>
+<div class="code_block">
+<div class="sourceCode" id="cb1"><pre class="sourceCode nix"><code class="sourceCode nix"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="op">{</span> <span class="va">pkgs</span><span class="op">,</span> <span class="op">...</span> <span class="op">}</span>:</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="va">networking</span>.<span class="va">wireless</span>.<span class="va">enable</span> <span class="op">=</span> <span class="cn">true</span><span class="op">;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="va">environment</span>.<span class="va">systemPackages</span> <span class="op">=</span> <span class="op">[</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    pkgs<span class="op">.</span>nixd</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    pkgs<span class="op">.</span>emacs</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    pkgs<span class="op">.</span>git</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  <span class="op">];</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Nix</p>
+</div>
+<figcaption>
+Module A
+</figcaption>
+</figure>
+<figure>
+<div class="code_block">
+<div class="sourceCode" id="cb2"><pre class="sourceCode nix"><code class="sourceCode nix"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="op">{</span> <span class="va">pkgs</span><span class="op">,</span> <span class="op">...</span> <span class="op">}</span>:</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="va">networking</span>.<span class="va">wireless</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="va">dbusControlled</span> <span class="op">=</span> <span class="cn">true</span><span class="op">;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="va">fallbackToWPA2</span> <span class="op">=</span> <span class="cn">true</span><span class="op">;</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="op">};</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>  <span class="va">environment</span>.<span class="va">systemPackages</span> <span class="op">=</span> <span class="op">[</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    pkgs<span class="op">.</span>pandoc</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>  <span class="op">];</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Nix</p>
+</div>
+<figcaption>
+Module B
+</figcaption>
+</figure>
+<figure id="module-c">
+<div class="code_block">
+<div class="sourceCode" id="cb3"><pre class="sourceCode nix"><code class="sourceCode nix"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="va">networking</span>.<span class="va">hostName</span> <span class="op">=</span> <span class="st">&quot;home-desktop&quot;</span><span class="op">;</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Nix</p>
+</div>
+<figcaption>
+Module C
+</figcaption>
+</figure>
+<p>After merging them, the result will be:</p>
+<div class="code_block">
+<div class="sourceCode" id="cb4"><pre class="sourceCode nix"><code class="sourceCode nix"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="op">{</span> <span class="va">pkgs</span><span class="op">,</span> <span class="op">...</span> <span class="op">}</span>:</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="va">networking</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    <span class="va">wireless</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>      <span class="va">enable</span> <span class="op">=</span> <span class="cn">true</span><span class="op">;</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>      <span class="va">dbusControlled</span> <span class="op">=</span> <span class="cn">true</span><span class="op">;</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>      <span class="va">fallbackToWPA2</span> <span class="op">=</span> <span class="cn">true</span><span class="op">;</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">};</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    <span class="va">hostName</span> <span class="op">=</span> <span class="st">&quot;home-desktop&quot;</span><span class="op">;</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>  <span class="op">};</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>  <span class="va">environment</span>.<span class="va">systemPackages</span> <span class="op">=</span> <span class="op">[</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>    pkgs<span class="op">.</span>nixd</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>    pkgs<span class="op">.</span>emacs</span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>    pkgs<span class="op">.</span>git</span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>    pkgs<span class="op">.</span>pandoc</span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>  <span class="op">];</span></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Nix</p>
+</div>
+<p>Everything discussed so far applies to all modules. However, there are different types of
+modules, distinguished by their input and output sets. Below we cover the three module
+types we’ll use: <a href="#nixos-modules">NixOS modules</a>, <a href="#home-manager-modules">Home Manager
+modules</a>, and <a href="#flake-parts-modules">Flake Parts modules</a>.</p>
+<h4 id="nixos-modules">NixOS modules</h4>
+<p><a href="https://wiki.nixos.org/wiki/NixOS_modules">NixOS modules</a> configure the system. They are
+functions that receive an attribute set <code>{ config, options, pkgs, lib, modulesPath, ... }</code>
+(the <a href="https://wiki.nixos.org/wiki/NixOS_modules#Function">official wiki</a> describes each
+argument) and evaluates to a set with NixOS options like <code>services.*</code>, <code>users.*</code>,
+<code>networking.*</code>, <code>boot.*</code>, etc. (See <a href="https://nixos.org/manual/nixos/stable/options">Appendix
+A</a> for a full list.)</p>
+<p>Here’s an example:</p>
+<div class="code_block">
+<div class="sourceCode" id="cb5"><pre class="sourceCode nix"><code class="sourceCode nix"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="op">{</span> <span class="va">pkgs</span><span class="op">,</span> <span class="op">...</span> <span class="op">}</span>:</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="va">environment</span>.<span class="va">systemPackages</span> <span class="op">=</span> <span class="op">[</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    pkgs<span class="op">.</span>nixd</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    pkgs<span class="op">.</span>git</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    pkgs<span class="op">.</span>emacs-with-packages</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>  <span class="op">];</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>  <span class="va">services</span>.<span class="va">openssh</span>.<span class="va">enable</span> <span class="op">=</span> <span class="cn">true</span><span class="op">;</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>  <span class="va">users</span>.<span class="va">users</span>.<span class="va">renatofg</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>    <span class="va">isNormalUser</span> <span class="op">=</span> <span class="cn">true</span><span class="op">;</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>    <span class="va">extraGroups</span> <span class="op">=</span> <span class="op">[</span> <span class="st">&quot;wheel&quot;</span> <span class="st">&quot;networkmanager&quot;</span> <span class="op">];</span></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>  <span class="op">};</span></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Nix</p>
+</div>
+<p>This module sets three options: <code>environment.systemPackages</code> (system-wide packages),
+<code>services.openssh.enable</code> (enable SSH daemon), and <code>users.users.renatofg</code> (user account
+configuration).</p>
+<p>A classic example of a NixOS module is <code>/etc/nixos/configuration.nix</code>, created during a
+fresh install.</p>
+<h3 id="home-manager-modules">Home Manager modules</h3>
+<p><a href="https://nix-community.github.io/home-manager/index.xhtml#ch-writing-modules">Home Manager
+modules</a>
+configure the user environment (dotfiles, programs, user services). Like NixOS modules,
+they are functions that receive an attribute set <code>{ pkgs, lib, config, options, modulesPath, osConfig, ... }</code> (see the <a href="https://nix-community.github.io/home-manager/options.xhtml#opt-_module.args">official
+documentation</a>
+for details) and evaluates to a set with options like <code>home.*</code>, <code>programs.*</code>, <code>services.*</code>
+(user-level), <code>xdg.*</code>, etc. (See <a href="https://nix-community.github.io/home-manager/options.xhtml">Appendix
+A</a> for a full list.)</p>
+<p>Here’s an example:</p>
+<div class="code_block">
+<div class="sourceCode" id="cb6"><pre class="sourceCode nix"><code class="sourceCode nix"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="op">{</span> <span class="va">pkgs</span><span class="op">,</span> <span class="va">osConfig</span><span class="op">,</span> <span class="op">...</span> <span class="op">}</span>:</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  <span class="va">home</span>.<span class="va">stateVersion</span> <span class="op">=</span> <span class="st">&quot;24.05&quot;</span><span class="op">;</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>  <span class="va">programs</span>.<span class="va">git</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    <span class="va">enable</span> <span class="op">=</span> <span class="cn">true</span><span class="op">;</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>    <span class="va">userName</span> <span class="op">=</span> <span class="st">&quot;Renato Garcia&quot;</span><span class="op">;</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    <span class="va">userEmail</span> <span class="op">=</span> <span class="st">&quot;foo@example.com&quot;</span><span class="op">;</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>  <span class="op">};</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>  <span class="va">programs</span>.<span class="va">starship</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>    <span class="va">enable</span> <span class="op">=</span> <span class="cn">true</span><span class="op">;</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>    <span class="va">settings</span> <span class="op">=</span> <span class="bu">builtins</span><span class="op">.</span>fromTOML <span class="op">(</span><span class="bu">builtins</span><span class="op">.</span>readFile <span class="ss">./_dotfiles/starship.toml</span><span class="op">);</span></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>  <span class="op">};</span></span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Access NixOS config when integrated</span></span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>  <span class="va">home</span>.<span class="va">packages</span> <span class="op">=</span> lib<span class="op">.</span>optionals osConfig<span class="op">.</span>services<span class="op">.</span>xserver<span class="op">.</span>enable <span class="op">[</span></span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>    pkgs<span class="op">.</span>alacritty</span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a>  <span class="op">];</span></span>
+<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Nix</p>
+</div>
+<p>Home Manager has its own module evaluation. It can run
+<a href="https://nix-community.github.io/home-manager/index.xhtml#ch-usage">standalone</a> or
+<a href="https://nix-community.github.io/home-manager/index.xhtml#sec-flakes-nixos-module">integrated with
+NixOS</a>.
+When integrated via
+<a href="https://nix-community.github.io/home-manager/nixos-options.xhtml#nixos-opt-home-manager.users"><code>home-manager.users.&lt;name&gt;</code></a>,
+each user’s configuration is evaluated separately from the system configuration. The
+<code>osConfig</code> argument provides read-only access to the NixOS configuration, letting you make
+Home Manager settings conditional on system settings.</p>
+<h3 id="flake-parts-modules">Flake Parts modules</h3>
+<p><a href="https://flake.parts/">Flake Parts</a> modules differ from NixOS and Home Manager modules.
+Instead of configuring systems or users, they <strong>structure the flake itself</strong>, using the
+module system to organize flake outputs.</p>
+<p>Like other modules, they are functions that receive an attribute set <code>{ self, config, options, lib, inputs, ... }</code> and evaluate to another attribute set. (See the documentation
+for <a href="https://flake.parts/module-arguments.html">input arguments</a> and <a href="https://flake.parts/options/flake-parts.html">output
+options</a>.)</p>
+<p>The Flake Parts library has broad applications, but for our purposes we only need three
+options:
+<a href="https://flake.parts/options/flake-parts.html#opt-flake.modules"><code>flake.modules.&lt;class&gt;.&lt;aspect&gt;</code></a>,
+<a href="https://flake.parts/options/flake-parts.html#opt-flake.nixosConfigurations"><code>flake.nixosConfigurations.&lt;hostname&gt;</code></a>,
+and
+<a href="https://flake.parts/options/flake-parts-easyoverlay#opt-perSystem.overlayAttrs"><code>perSystem.overlayAttrs</code></a>.</p>
+<h4 id="flake.modules.class.aspect"><code>flake.modules.&lt;class&gt;.&lt;aspect&gt;</code></h4>
+<p>This option collects our <a href="#nixos-modules">NixOS modules</a> and <a href="#home-manager-modules">Home Manager
+modules</a>. The <code>&lt;class&gt;</code> attribute designates the module type,
+either <code>nixos</code> or <code>homeManager</code> (other classes exist but we won’t use them here). The
+<code>&lt;aspect&gt;</code> attribute designates the <em>feature</em> being configured.</p>
+<p>For example: common configuration shared by all hosts goes in the <code>base</code> aspect
+(<a href="a-simple-nix-dendritic-config/ct1/modules/base/configuration.nix.html#L2">example</a>),
+user-specific configuration in the <code>helena</code> aspect
+(<a href="a-simple-nix-dendritic-config/ct1/modules/users/helena.nix.html#L2">example</a>), and a
+complete host configuration in the <code>home-desktop</code> aspect
+(<a href="a-simple-nix-dendritic-config/ct1/modules/hosts/home-desktop/default.nix.html#L7">example</a>).</p>
+<p>You could also create an aspect for a specific service like <code>ssh</code>:</p>
+<div class="code_block">
+<div class="sourceCode" id="cb7"><pre class="sourceCode nix"><code class="sourceCode nix"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="op">{</span> <span class="va">inputs</span><span class="op">,</span> <span class="va">config</span><span class="op">,</span> <span class="op">...</span> <span class="op">}</span>:</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  <span class="va">flake</span>.<span class="va">modules</span>.<span class="va">nixos</span>.<span class="va">ssh</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    <span class="co"># A NixOS module: setup OpenSSH server, firewall-ports, etc.</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>  <span class="op">};</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>  <span class="va">flake</span>.<span class="va">modules</span>.<span class="va">homeManager</span>.<span class="va">ssh</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>    <span class="co"># A Home Manager module: setup ~/.ssh/config, authorized_keys,</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>    <span class="co"># private keys secrets, etc.</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>  <span class="op">};</span></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Nix</p>
+</div>
+<p>The <code>&lt;class&gt;</code> name must match a configuration class: <code>nixos</code>, <code>homeManager</code>, etc. This
+determines what module type to assign. For a <code>nixos</code> class, assign <a href="#nixos-modules">NixOS
+modules</a>; for <code>homeManager</code>, assign <a href="#home-manager-modules">Home Manager
+modules</a>.</p>
+<figure>
+<svg font-size="1" viewBox="0.0 0.0 800.0 324.7285528563475" stroke="rgb(0,0,0)" xmlns="http://www.w3.org/2000/svg" width="800.0000" stroke-opacity="1" height="324.7286" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink"><defs></defs><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(128,128,128)" stroke="rgb(0,0,0)" stroke-linecap="butt" opacity="0.15" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 800.0000,324.7286 l -0.0000,-324.7286 h -800.0000 l -0.0000,324.7286 Z"></path></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(76,86,106)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 782.9090,230.7282 l -0.0000,-136.7278 h -273.4556 l -0.0000,136.7278 Z"></path></g><g stroke-linejoin="miter" fill-opacity="1.0" font-size="17.090976466123553px" fill="rgb(236,239,244)" stroke="rgb(0,0,0)" font-family="Inconsolata" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="2.0387558648747643"><text transform="matrix(1.0000,0.0000,0.0000,1.0000,516.2898,112.8004)" stroke="none" dominant-baseline="alphabetic" text-anchor="start">flake-parts</text></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(129,161,193)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 765.8180,217.0554 l -0.0000,-34.1820 h -239.2737 l -0.0000,34.1820 Z"></path></g><g stroke-linejoin="miter" fill-opacity="1.0" font-size="17.090976466123553px" fill="rgb(46,52,64)" stroke="rgb(0,0,0)" font-family="Inconsolata" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="2.0387558648747643"><text transform="matrix(1.0000,0.0000,0.0000,1.0000,553.8899,205.9463)" stroke="none" dominant-baseline="alphabetic" text-anchor="start">homeManager.base = B</text></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(129,161,193)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 765.8180,176.0371 l -0.0000,-34.1820 h -239.2737 l -0.0000,34.1820 Z"></path></g><g stroke-linejoin="miter" fill-opacity="1.0" font-size="17.090976466123553px" fill="rgb(46,52,64)" stroke="rgb(0,0,0)" font-family="Inconsolata" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="2.0387558648747643"><text transform="matrix(1.0000,0.0000,0.0000,1.0000,563.1191,164.9279)" stroke="none" dominant-baseline="alphabetic" text-anchor="start">nixos.base = A ∪ C</text></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(208,135,112)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 441.0895,162.3643 l -41.0895,-41.0895 l -41.0895,41.0895 l 41.0895,41.0895 Z"></path></g><g stroke-linejoin="miter" fill-opacity="1.0" font-size="17.090976466123553px" fill="rgb(46,52,64)" stroke="rgb(0,0,0)" font-family="Inconsolata" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="2.0387558648747643"><text transform="matrix(1.0000,0.0000,0.0000,1.0000,376.9272,168.3461)" stroke="none" dominant-baseline="alphabetic" text-anchor="start">Merge</text></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(76,86,106)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 290.5466,307.6376 l -0.0000,-136.7278 h -273.4556 l -0.0000,136.7278 Z"></path></g><g stroke-linejoin="miter" fill-opacity="1.0" font-size="17.090976466123553px" fill="rgb(236,239,244)" stroke="rgb(0,0,0)" font-family="Inconsolata" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="2.0387558648747643"><text transform="matrix(1.0000,0.0000,0.0000,1.0000,23.9274,189.7098)" stroke="none" dominant-baseline="alphabetic" text-anchor="start">flake-parts</text></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(129,161,193)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 273.4556,273.4556 l -0.0000,-34.1820 h -239.2737 l -0.0000,34.1820 Z"></path></g><g stroke-linejoin="miter" fill-opacity="1.0" font-size="17.090976466123553px" fill="rgb(46,52,64)" stroke="rgb(0,0,0)" font-family="Inconsolata" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="2.0387558648747643"><text transform="matrix(1.0000,0.0000,0.0000,1.0000,89.2149,262.3465)" stroke="none" dominant-baseline="alphabetic" text-anchor="start">nixos.base = C</text></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(76,86,106)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 290.5466,153.8188 l -0.0000,-136.7278 h -273.4556 l -0.0000,136.7278 Z"></path></g><g stroke-linejoin="miter" fill-opacity="1.0" font-size="17.090976466123553px" fill="rgb(236,239,244)" stroke="rgb(0,0,0)" font-family="Inconsolata" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="2.0387558648747643"><text transform="matrix(1.0000,0.0000,0.0000,1.0000,23.9274,35.8911)" stroke="none" dominant-baseline="alphabetic" text-anchor="start">flake-parts</text></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(129,161,193)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 273.4556,140.1460 l -0.0000,-34.1820 h -239.2737 l -0.0000,34.1820 Z"></path></g><g stroke-linejoin="miter" fill-opacity="1.0" font-size="17.090976466123553px" fill="rgb(46,52,64)" stroke="rgb(0,0,0)" font-family="Inconsolata" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="2.0387558648747643"><text transform="matrix(1.0000,0.0000,0.0000,1.0000,61.5275,129.0369)" stroke="none" dominant-baseline="alphabetic" text-anchor="start">homeManager.base = B</text></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(129,161,193)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 273.4556,99.1277 l -0.0000,-34.1820 h -239.2737 l -0.0000,34.1820 Z"></path></g><g stroke-linejoin="miter" fill-opacity="1.0" font-size="17.090976466123553px" fill="rgb(46,52,64)" stroke="rgb(0,0,0)" font-family="Inconsolata" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="2.0387558648747643"><text transform="matrix(1.0000,0.0000,0.0000,1.0000,89.2149,88.0185)" stroke="none" dominant-baseline="alphabetic" text-anchor="start">nixos.base = A</text></g><g stroke-linejoin="miter" fill-opacity="0.0" fill="rgb(0,0,0)" stroke="rgb(216,222,233)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="2.0387558648747643"><path d="M 297.0037,89.5484 l 60.9279,38.6259 "></path></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 372.9982,137.7260 l -13.9941,-16.8998 l -0.6198,7.6352 l -6.6411,3.8179 Z"></path></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 358.3842,128.4613 l -0.4526,-0.2869 l 0.5458,-0.8609 l -0.0932,1.1479 l -0.4526,-0.2869 l -0.5458,0.8609 Z"></path></g><g stroke-linejoin="miter" fill-opacity="0.0" fill="rgb(0,0,0)" stroke="rgb(216,222,233)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="2.0387558648747643"><path d="M 297.0037,235.1801 l 60.9279,-38.6259 "></path></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 372.9982,187.0026 l -21.2550,5.4467 l 6.6411,3.8179 l 0.6198,7.6352 Z"></path></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 358.3842,196.2672 l -0.4526,0.2869 l -0.5458,-0.8609 l 0.9984,0.5740 l -0.4526,0.2869 l 0.5458,0.8609 Z"></path></g><g stroke-linejoin="miter" fill-opacity="0.0" fill="rgb(0,0,0)" stroke="rgb(216,222,233)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="2.0387558648747643"><path d="M 448.7348,162.3643 l 35.2341,-0.0000 "></path></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 501.8081,162.3643 l -20.8678,-6.7804 l 3.5647,6.7804 l -3.5647,6.7804 Z"></path></g><g stroke-linejoin="miter" fill-opacity="1.0" fill="rgb(216,222,233)" stroke="rgb(0,0,0)" stroke-linecap="butt" stroke-miterlimit="10.0" stroke-opacity="1.0" stroke-width="0.0"><path d="M 484.5049,162.3643 l -0.5359,0.0000 l -0.0000,-1.0194 l 0.5359,1.0194 l -0.5359,0.0000 l 0.0000,1.0194 Z"></path></g></svg>
+<figcaption>All flake-parts modules will be merged, and each `flake.modules.&lt;class&gt;.&lt;aspect&gt;` attribute will be merged within it.</figcaption>
+</figure>
+<p>The <code>&lt;aspect&gt;</code> name is arbitrary, use as many as you need to organize your configuration.
+As with all <a href="#module">modules</a>, you can define multiple <code>flake.modules.nixos.base</code>
+attributes and they’ll be merged together. Access the merged result from any Flake Parts
+module via <code>self.modules.nixos.base</code>.</p>
+<h4 id="flake.nixosconfigurations.hostname"><code>flake.nixosConfigurations.&lt;hostname&gt;</code></h4>
+<p>This option maps to the flake’s
+<a href="https://wiki.nixos.org/wiki/Flakes#Output_schema"><code>outputs.nixosConfigurations.&lt;hostname&gt;</code></a>
+attribute. The <code>&lt;hostname&gt;</code> matches what you specify in <code>nixos-rebuild switch --flake /etc/nixos#&lt;hostname&gt;</code>.</p>
+<h2 id="code-walkthrough">Code walkthrough</h2>
+<p>Now let’s walk through the code.</p>
+<h3 id="flake.nix">flake.nix</h3>
+<p>Remember: the <a href="https://nixos.wiki/wiki/flakes#Output_schema">flake output set</a> is our
+final result. When you run <code>nixos-rebuild switch --flake /etc/nixos#home-desktop</code>, it
+evaluates <code>/etc/nixos/flake.nix</code>, reads the configuration from
+<code>outputs.nixosConfigurations.home-desktop</code>, and reconfigures the system accordingly.</p>
+<p>The function <code>flake-parts.lib.mkFlake</code> processes all our modules to create the host
+configurations:</p>
+<div class="code_block">
+<p><a href="a-simple-nix-dendritic-config/ct1/flake.nix.html#L13" title="view-source">View in source</a></p>
+<div class="sourceCode" id="cb8" data-viewsource="a-simple-nix-dendritic-config/ct1/flake.nix.html#L13"><pre class="sourceCode nix excerpt"><code class="sourceCode nix"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>outputs = <span class="va">inputs</span><span class="op">:</span> inputs<span class="op">.</span>flake<span class="op">-</span>parts<span class="op">.</span>lib<span class="op">.</span>mkFlake <span class="op">{</span> <span class="kw">inherit</span> <span class="va">inputs</span><span class="op">;</span> <span class="op">}</span> <span class="op">(</span>inputs<span class="op">.</span>import<span class="op">-</span>tree <span class="ss">./modules</span><span class="op">)</span>;</span></code></pre></div>
+<p>Nix</p>
+</div>
+<p>Instead of manually importing each <a href="#flake-parts-modules">Flake Parts module</a>, we use
+<a href="https://dendritic.oeiuwq.com/ecosystem/import-tree">import-tree</a> to recursively discover
+and import all <code>.nix</code> files under <code>./modules</code>.</p>
+<h3 id="w-flake-parts-modules">Flake Parts modules</h3>
+<p><a href="#file-tree">All Nix files</a> under <code>modules/</code> directory are Flake Parts modules. They
+receive the arguments described in the <a href="#flake-parts-modules">Flake Parts section</a> and
+output a set with one or more of the following attributes:</p>
+<h4 id="w-flake.modules.class.aspect"><code>flake.modules.&lt;class&gt;.&lt;aspect&gt;</code></h4>
+<div class="code_block">
+<p><a href="a-simple-nix-dendritic-config/ct1/modules/base/configuration.nix.html#L2" title="view-source">View in source</a></p>
+<div class="sourceCode" id="cb9" data-viewsource="a-simple-nix-dendritic-config/ct1/modules/base/configuration.nix.html#L2"><pre class="sourceCode nix excerpt"><code class="sourceCode nix"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>flake<span class="op">.</span>modules<span class="op">.</span>nixos<span class="op">.</span>base =</span></code></pre></div>
+<p>Nix</p>
+</div>
+<p>Here <code>nixos</code> is the <em>class</em> and <code>base</code> is the <em>aspect</em>. The <a href="#file-tree">directory tree</a>
+follows a convention: either the file is named after the aspect (e.g., <code>helena.nix</code>) or
+the parent directory matches the aspect name. This is not a strict requirement, just a
+convenient way to organize the code.</p>
+<h4 id="w-flake.nixosconfigurations.hostname"><code>flake.nixosConfigurations.&lt;hostname&gt;</code></h4>
+<div class="code_block">
+<p><a href="a-simple-nix-dendritic-config/ct1/modules/hosts/renato-notebook/default.nix.html#L51" title="view-source">View in source</a></p>
+<div class="sourceCode" id="cb10" data-viewsource="a-simple-nix-dendritic-config/ct1/modules/hosts/renato-notebook/default.nix.html#L51"><pre class="sourceCode nix excerpt"><code class="sourceCode nix"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>flake<span class="op">.</span>nixosConfigurations<span class="op">.</span>renato<span class="op">-</span>notebook = inputs<span class="op">.</span>nixpkgs<span class="op">.</span>lib<span class="op">.</span>nixosSystem <span class="op">{</span></span></code></pre></div>
+<p>Nix</p>
+</div>
+<p>Here <code>renato-notebook</code> is the <em>hostname</em>. The <code>nixosSystem</code> function is covered in
+<a href="#defining-a-host">Defining a host</a>.</p>
+<h4 id="persystem.overlayattrs"><code>perSystem.overlayAttrs</code></h4>
+<div class="code_block">
+<p><a href="a-simple-nix-dendritic-config/ct1/modules/base/overlays.nix.html#L11" title="view-source">View in source</a></p>
+<div class="sourceCode" id="cb11" data-viewsource="a-simple-nix-dendritic-config/ct1/modules/base/overlays.nix.html#L11"><pre class="sourceCode nix excerpt"><code class="sourceCode nix"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>overlayAttrs = <span class="op">{</span></span></code></pre></div>
+<p>Nix</p>
+</div>
+<p>Here we define the <a href="https://wiki.nixos.org/wiki/Overlays">overlay</a> applied to nixpkgs. For
+example, we can add an attribute pointing to a different nixpkgs version:</p>
+<div class="code_block">
+<p><a href="a-simple-nix-dendritic-config/ct1/modules/base/overlays.nix.html#L13-L15" title="view-source">View in source</a></p>
+<div class="sourceCode" id="cb12" data-viewsource="a-simple-nix-dendritic-config/ct1/modules/base/overlays.nix.html#L13-L15"><pre class="sourceCode nix excerpt"><code class="sourceCode nix"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>unstable = <span class="bu">import</span> inputs<span class="op">.</span>nixpkgs<span class="op">-</span>unstable <span class="op">{</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">inherit</span> <span class="va">system</span><span class="op">;</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="op">}</span>;</span></code></pre></div>
+<p>Nix</p>
+</div>
+<p>Or override a specific package:</p>
+<div class="code_block">
+<p><a href="a-simple-nix-dendritic-config/ct1/modules/base/overlays.nix.html#L17-L24" title="view-source">View in source</a></p>
+<div class="sourceCode" id="cb13" data-viewsource="a-simple-nix-dendritic-config/ct1/modules/base/overlays.nix.html#L17-L24"><pre class="sourceCode nix excerpt"><code class="sourceCode nix"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>polybar = pkgs<span class="op">.</span>polybar<span class="op">.</span>override <span class="op">{</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>  <span class="va">alsaSupport</span> <span class="op">=</span> <span class="cn">false</span><span class="op">;</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>  <span class="va">mpdSupport</span> <span class="op">=</span> <span class="cn">true</span><span class="op">;</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>  <span class="va">pulseSupport</span> <span class="op">=</span> <span class="cn">true</span><span class="op">;</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>  <span class="va">iwSupport</span> <span class="op">=</span> <span class="cn">true</span><span class="op">;</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>  <span class="va">nlSupport</span> <span class="op">=</span> <span class="cn">true</span><span class="op">;</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>  <span class="va">i3Support</span> <span class="op">=</span> <span class="cn">false</span><span class="op">;</span></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a><span class="op">}</span>;</span></code></pre></div>
+<p>Nix</p>
+</div>
+<p>Or create new packages:</p>
+<div class="code_block">
+<p><a href="a-simple-nix-dendritic-config/ct1/modules/base/overlays.nix.html#L26-L39" title="view-source">View in source</a></p>
+<div class="sourceCode" id="cb14" data-viewsource="a-simple-nix-dendritic-config/ct1/modules/base/overlays.nix.html#L26-L39"><pre class="sourceCode nix excerpt"><code class="sourceCode nix"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>emacs<span class="op">-</span><span class="kw">with</span><span class="op">-</span>packages = pkgs<span class="op">.</span>emacs<span class="op">.</span>pkgs<span class="op">.</span>withPackages <span class="op">(</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>  <span class="va">epkgs</span><span class="op">:</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>  <span class="op">(</span><span class="kw">with</span> epkgs<span class="op">.</span>melpaPackages<span class="op">;</span> <span class="op">[</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>    doom-modeline</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>    evil-collection</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>    magit</span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>    zenburn-theme</span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>  <span class="op">])</span></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>  <span class="op">++</span> <span class="op">[</span></span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>    epkgs<span class="op">.</span>nix-ts-mode</span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>    epkgs<span class="op">.</span>tree-sitter-langs</span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>    epkgs<span class="op">.</span>treesit-grammars<span class="op">.</span>with-all-grammars</span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>  <span class="op">]</span></span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a><span class="op">);</span></span></code></pre></div>
+<p>Nix</p>
+</div>
+<p>These changes are visible when packages are installed on the system.</p>
+<h4 id="imports"><code>imports</code></h4>
+<div class="code_block">
+<p><a href="a-simple-nix-dendritic-config/ct1/modules/flake-parts.nix.html#L3-L6" title="view-source">View in source</a></p>
+<div class="sourceCode" id="cb15" data-viewsource="a-simple-nix-dendritic-config/ct1/modules/flake-parts.nix.html#L3-L6"><pre class="sourceCode nix excerpt"><code class="sourceCode nix"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>imports = <span class="op">[</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>  inputs<span class="op">.</span>flake-parts<span class="op">.</span>flakeModules<span class="op">.</span>modules</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>  inputs<span class="op">.</span>flake-parts<span class="op">.</span>flakeModules<span class="op">.</span>easyOverlay</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a><span class="op">]</span>;</span></code></pre></div>
+<p>Nix</p>
+</div>
+<p>Here we import the <em>Flake Parts</em> modules that provide the features used in our
+configuration.</p>
+<p><a href="https://flake.parts/options/flake-parts-modules.html"><code>inputs.flake-parts.flakeModules.modules</code></a>
+enables defining multiple modules as attributes in the <code>flake.modules.&lt;class&gt;.&lt;aspect&gt;</code>
+format. Without it, we would get a “flake.modules is defined multiple times while it’s
+expected to be unique” error.</p>
+<p><a href="https://flake.parts/options/flake-parts-easyoverlay"><code>inputs.flake-parts.flakeModules.easyOverlay</code></a>
+enables defining overlays using the <a href="#persystem.overlayattrs"><code>perSystem.overlayAttrs</code></a>
+format. Without it, we would also get an error.</p>
+<h4 id="systems"><code>systems</code></h4>
+<div class="code_block">
+<p><a href="a-simple-nix-dendritic-config/ct1/modules/flake-parts.nix.html#L8" title="view-source">View in source</a></p>
+<div class="sourceCode" id="cb16" data-viewsource="a-simple-nix-dendritic-config/ct1/modules/flake-parts.nix.html#L8"><pre class="sourceCode nix excerpt"><code class="sourceCode nix"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>systems = <span class="op">[</span> <span class="op">]</span>;</span></code></pre></div>
+<p>Nix</p>
+</div>
+<p>This just needs to exist, otherwise we would get a “The option <code>systems</code> was accessed but
+has no value defined” error. It becomes relevant when using other <a href="https://flake.parts/options/flake-parts.html#opt-systems">Flake Parts
+features</a>, but is not used in
+our current configuration.</p>
+<h3 id="w-nixos-modules">NixOS modules</h3>
+<p>All values assigned to attributes in the <code>flake.modules.nixos.&lt;aspect&gt;</code> format (i.e., all
+<em>aspects</em> with <code>nixos</code> as their <em>class</em>) are NixOS modules. See the code here:
+<a href="a-simple-nix-dendritic-config/ct1/modules/base/configuration.nix.html#L3-L46">1</a>,
+<a href="a-simple-nix-dendritic-config/ct1/modules/base/packages.nix.html#L3-L28">2</a>,
+<a href="a-simple-nix-dendritic-config/ct1/modules/hosts/home-desktop/default.nix.html#L8-L67">3</a>,
+<a href="a-simple-nix-dendritic-config/ct1/modules/hosts/home-desktop/filesystem.nix.html#L3-L24">4</a>,
+<a href="a-simple-nix-dendritic-config/ct1/modules/hosts/renato-notebook/default.nix.html#L8-L49">5</a>,
+<a href="a-simple-nix-dendritic-config/ct1/modules/hosts/renato-notebook/filesystem.nix.html#L3-L16">6</a>,
+<a href="a-simple-nix-dendritic-config/ct1/modules/users/helena.nix.html#L3-L13">7</a>,
+<a href="a-simple-nix-dendritic-config/ct1/modules/users/renatofg/default.nix.html#L3-L19">8</a>.</p>
+<p>Within a NixOS module we can set system options, install packages, and so on. However, a
+special category in our dendritic configuration are modules where the <em>aspect</em> matches the
+host name, following the format <code>flake.modules.nixos.&lt;hostname&gt;</code>. Our example has both
+<code>flake.modules.nixos.renato-notebook</code>
+(<a href="a-simple-nix-dendritic-config/ct1/modules/hosts/renato-notebook/default.nix.html#L7">1</a>,
+<a href="a-simple-nix-dendritic-config/ct1/modules/hosts/renato-notebook/filesystem.nix.html#L2">2</a>)
+and <code>flake.modules.nixos.home-desktop</code>
+(<a href="a-simple-nix-dendritic-config/ct1/modules/hosts/home-desktop/default.nix.html#L7">1</a>,
+<a href="a-simple-nix-dendritic-config/ct1/modules/hosts/home-desktop/filesystem.nix.html#L2">2</a>).
+These are special because they gather all the modules used by each host, specifically in
+the <code>imports</code> attribute:</p>
+<div class="code_block">
+<p><a href="a-simple-nix-dendritic-config/ct1/modules/hosts/renato-notebook/default.nix.html#L10-L14" title="view-source">View in source</a></p>
+<div class="sourceCode" id="cb17" data-viewsource="a-simple-nix-dendritic-config/ct1/modules/hosts/renato-notebook/default.nix.html#L10-L14"><pre class="sourceCode nix excerpt"><code class="sourceCode nix"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>imports = <span class="kw">with</span> self<span class="op">.</span>modules<span class="op">.</span>nixos<span class="op">;</span> <span class="op">[</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>  base</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>  renatofg</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>  helena</span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a><span class="op">]</span>;</span></code></pre></div>
+<p>Nix</p>
+</div>
+<p>we list all the <a href="#flake.modules.class.aspect">aspects</a> used by that host. Here we included
+the merged <code>flake.modules.nixos.base</code> modules
+(<a href="a-simple-nix-dendritic-config/ct1/modules/base/configuration.nix.html#L2-L46">1</a>,
+<a href="a-simple-nix-dendritic-config/ct1/modules/base/packages.nix.html#L2-L28">2</a>), the
+<code>flake.modules.nixos.renatofg</code> module
+(<a href="a-simple-nix-dendritic-config/ct1/modules/users/renatofg/default.nix.html#L2-L19">1</a>),
+and <code>flake.modules.nixos.helena</code>
+(<a href="a-simple-nix-dendritic-config/ct1/modules/users/helena.nix.html#L2-L13">1</a>).</p>
+<p>Note that when listing packages to install:</p>
+<div class="code_block">
+<p><a href="a-simple-nix-dendritic-config/ct1/modules/base/packages.nix.html#L11-L27" title="view-source">View in source</a></p>
+<div class="sourceCode" id="cb18" data-viewsource="a-simple-nix-dendritic-config/ct1/modules/base/packages.nix.html#L11-L27"><pre class="sourceCode nix excerpt"><code class="sourceCode nix"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>environment<span class="op">.</span>systemPackages = <span class="kw">with</span> pkgs<span class="op">;</span> <span class="op">[</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>  unstable<span class="op">.</span>nushell</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Language servers</span></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>  bash-language-server</span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>  clang-tools</span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>  cmake-language-server</span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>  nixd</span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a>  alacritty</span>
+<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a>  emacs-with-packages</span>
+<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a>  git</span>
+<span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a>  pandoc</span>
+<span id="cb18-14"><a href="#cb18-14" aria-hidden="true" tabindex="-1"></a>  polybar</span>
+<span id="cb18-15"><a href="#cb18-15" aria-hidden="true" tabindex="-1"></a>  qutebrowser</span>
+<span id="cb18-16"><a href="#cb18-16" aria-hidden="true" tabindex="-1"></a>  starship</span>
+<span id="cb18-17"><a href="#cb18-17" aria-hidden="true" tabindex="-1"></a><span class="op">]</span>;</span></code></pre></div>
+<p>Nix</p>
+</div>
+<p>any changes made with the <a href="#persystem.overlayattrs">overlay</a> are visible.</p>
+<h3 id="w-home-manager-modules">Home Manager modules</h3>
+<p>All values assigned to attributes in the <code>flake.modules.homeManager.&lt;aspect&gt;</code> format
+(i.e., all <em>aspects</em> with <code>homeManager</code> as their <em>class</em>) are Home Manager modules. See
+the code
+<a href="a-simple-nix-dendritic-config/ct1/modules/users/renatofg/default.nix.html#L22-L31">here</a>.</p>
+<h3 id="defining-a-host">Defining a host</h3>
+<p>To generate the configuration for a host, we call the
+<a href="https://github.com/NixOS/nixpkgs/blob/f3fac38a699a15705a6ed5883dd4f75ab60ad842/flake.nix#L42-L63"><code>nixpkgs.lib.nixosSystem</code></a>
+function. This is where we combine all module pieces to build a complete NixOS system
+configuration. The <code>nixosSystem</code> function accepts several arguments, but we only use the
+<code>modules</code> list:</p>
+<div class="code_block">
+<p><a href="a-simple-nix-dendritic-config/ct1/modules/hosts/renato-notebook/default.nix.html#L51-L73" title="view-source">View in source</a></p>
+<div class="sourceCode" id="cb19" data-viewsource="a-simple-nix-dendritic-config/ct1/modules/hosts/renato-notebook/default.nix.html#L51-L73"><pre class="sourceCode nix excerpt"><code class="sourceCode nix"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>flake<span class="op">.</span>nixosConfigurations<span class="op">.</span>renato<span class="op">-</span>notebook = inputs<span class="op">.</span>nixpkgs<span class="op">.</span>lib<span class="op">.</span>nixosSystem <span class="op">{</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>  <span class="va">modules</span> <span class="op">=</span> <span class="op">[</span></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>    self<span class="op">.</span>modules<span class="op">.</span>nixos<span class="op">.</span>renato-notebook</span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>    inputs<span class="op">.</span>home-manager<span class="op">.</span>nixosModules<span class="op">.</span>home-manager</span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a>      <span class="va">home-manager</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a>        <span class="va">useGlobalPkgs</span> <span class="op">=</span> <span class="cn">true</span><span class="op">;</span></span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a>        <span class="va">users</span>.<span class="va">renatofg</span> <span class="op">=</span> self<span class="op">.</span>modules<span class="op">.</span>homeManager<span class="op">.</span>renatofg<span class="op">;</span></span>
+<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a>      <span class="op">};</span></span>
+<span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb19-14"><a href="#cb19-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-15"><a href="#cb19-15" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb19-16"><a href="#cb19-16" aria-hidden="true" tabindex="-1"></a>      <span class="va">nixpkgs</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb19-17"><a href="#cb19-17" aria-hidden="true" tabindex="-1"></a>        <span class="va">config</span>.<span class="va">allowUnfree</span> <span class="op">=</span> <span class="cn">true</span><span class="op">;</span></span>
+<span id="cb19-18"><a href="#cb19-18" aria-hidden="true" tabindex="-1"></a>        <span class="va">overlays</span> <span class="op">=</span> <span class="op">[</span> self<span class="op">.</span>overlays<span class="op">.</span>default <span class="op">];</span></span>
+<span id="cb19-19"><a href="#cb19-19" aria-hidden="true" tabindex="-1"></a>      <span class="op">};</span></span>
+<span id="cb19-20"><a href="#cb19-20" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb19-21"><a href="#cb19-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-22"><a href="#cb19-22" aria-hidden="true" tabindex="-1"></a>  <span class="op">];</span></span>
+<span id="cb19-23"><a href="#cb19-23" aria-hidden="true" tabindex="-1"></a><span class="op">}</span>;</span></code></pre></div>
+<p>Nix</p>
+</div>
+<p>Each element in the <code>modules</code> list is a <a href="#nixos-modules">NixOS Module</a>. When merged
+together, they fully define the host.</p>
+<p>The first item:</p>
+<div class="code_block">
+<p><a href="a-simple-nix-dendritic-config/ct1/modules/hosts/renato-notebook/default.nix.html#L54" title="view-source">View in source</a></p>
+<div class="sourceCode" id="cb20" data-viewsource="a-simple-nix-dendritic-config/ct1/modules/hosts/renato-notebook/default.nix.html#L54"><pre class="sourceCode nix excerpt"><code class="sourceCode nix"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>self<span class="op">.</span>modules<span class="op">.</span>nixos<span class="op">.</span>renato<span class="op">-</span>notebook</span></code></pre></div>
+<p>Nix</p>
+</div>
+<p>is the merged result of all <code>flake.modules.nixos.renato-notebook</code> modules—the <a href="#nixos-modules">NixOS
+module</a> containing the complete system configuration for the
+<code>renato-notebook</code> host.</p>
+<p>The second item:</p>
+<div class="code_block">
+<p><a href="a-simple-nix-dendritic-config/ct1/modules/hosts/renato-notebook/default.nix.html#L56" title="view-source">View in source</a></p>
+<div class="sourceCode" id="cb21" data-viewsource="a-simple-nix-dendritic-config/ct1/modules/hosts/renato-notebook/default.nix.html#L56"><pre class="sourceCode nix excerpt"><code class="sourceCode nix"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>inputs<span class="op">.</span>home<span class="op">-</span>manager<span class="op">.</span>nixosModules<span class="op">.</span>home<span class="op">-</span>manager</span></code></pre></div>
+<p>Nix</p>
+</div>
+<p>is a module defined by the <a href="https://nix-community.github.io/home-manager/index.xhtml#sec-flakes-nixos-module">Home Manager
+project</a>
+that enables including <em>Home Manager</em> configuration as part of the NixOS configuration.
+This allows rebuilding both together when running <code>nixos-rebuild switch --flake /etc/nixos#renato-notebook</code>. Without this module, assigning options to <code>home-manager</code>
+attributes would fail since they are not valid NixOS module options.</p>
+<p>With <code>home-manager.nixosModules.home-manager</code> included, we can add the following NixOS
+module to the list:</p>
+<div class="code_block">
+<p><a href="a-simple-nix-dendritic-config/ct1/modules/hosts/renato-notebook/default.nix.html#L58-L63" title="view-source">View in source</a></p>
+<div class="sourceCode" id="cb22" data-viewsource="a-simple-nix-dendritic-config/ct1/modules/hosts/renato-notebook/default.nix.html#L58-L63"><pre class="sourceCode nix excerpt"><code class="sourceCode nix"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>  <span class="va">home-manager</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>    <span class="va">useGlobalPkgs</span> <span class="op">=</span> <span class="cn">true</span><span class="op">;</span></span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>    <span class="va">users</span>.<span class="va">renatofg</span> <span class="op">=</span> self<span class="op">.</span>modules<span class="op">.</span>homeManager<span class="op">.</span>renatofg<span class="op">;</span></span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>  <span class="op">};</span></span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Nix</p>
+</div>
+<p>All valid options are documented
+<a href="https://nix-community.github.io/home-manager/nixos-options.xhtml">here</a>, but the key one
+is
+<a href="https://nix-community.github.io/home-manager/nixos-options.xhtml#nixos-opt-home-manager.users"><code>users.&lt;username&gt;</code></a>.
+Here we add the <a href="#home-manager-modules">Home Manager modules</a> for all users on that host.
+In this example, we reference our defined
+<a href="a-simple-nix-dendritic-config/ct1/modules/users/renatofg/default.nix.html#L21-31"><code>flake.modules.homeManager.renatofg</code></a>.</p>
+<p>The last module in the list:</p>
+<div class="code_block">
+<p><a href="a-simple-nix-dendritic-config/ct1/modules/hosts/renato-notebook/default.nix.html#L65-L70" title="view-source">View in source</a></p>
+<div class="sourceCode" id="cb23" data-viewsource="a-simple-nix-dendritic-config/ct1/modules/hosts/renato-notebook/default.nix.html#L65-L70"><pre class="sourceCode nix excerpt"><code class="sourceCode nix"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>  <span class="va">nixpkgs</span> <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>    <span class="va">config</span>.<span class="va">allowUnfree</span> <span class="op">=</span> <span class="cn">true</span><span class="op">;</span></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>    <span class="va">overlays</span> <span class="op">=</span> <span class="op">[</span> self<span class="op">.</span>overlays<span class="op">.</span>default <span class="op">];</span></span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>  <span class="op">};</span></span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Nix</p>
+</div>
+<p>configures <a href="https://nixos.org/manual/nixpkgs/stable/#preface">nixpkgs</a> for our NixOS
+system. All valid <code>nixpkgs.*</code> options are in the NixOS manual; the relevant ones here are
+<a href="https://nixos.org/manual/nixos/stable/options#opt-nixpkgs.overlays"><code>nixpkgs.overlays</code></a>
+and
+<a href="https://nixos.org/manual/nixpkgs/stable/#sec-config-options-reference"><code>nixpkgs.config</code></a>.</p>
+<p>The <code>nixpkgs.overlays</code> list specifies
+<a href="https://nixos.org/manual/nixpkgs/stable/#chap-overlays">overlays</a> to apply to nixpkgs. In
+our configuration, we apply only <code>self.overlays.default</code>, defined via the flake-parts
+<a href="#persystem.overlayattrs"><code>perSystem.overlayAttrs</code></a> option
+<a href="a-simple-nix-dendritic-config/ct1/modules/base/overlays.nix.html#L11-L40">here</a>.</p>
+<p>The <code>nixpkgs.config</code> attribute set configures the Nixpkgs collection. Above, we only
+enable unfree packages, but the same options can enable CUDA support system-wide, as done
+for the <code>home-desktop</code> host
+<a href="a-simple-nix-dendritic-config/ct1/modules/hosts/home-desktop/default.nix.html#L83-L92">here</a>.</p>
+<h2 id="wrapping-it-up-dendritic-pattern">Wrapping it up: Dendritic Pattern</h2>
+<blockquote>
+<p><strong>dendrite</strong> <em>/ˈden-ˌdrīt/</em><br>
+1. a branching treelike figure produced on or in a mineral by a foreign mineral<br>
+2. a crystallized arborescent form<br>
+3. any of the usually branching protoplasmic processes that conduct impulses toward the body of a neuron</p>
+<p>— <a href="https://www.merriam-webster.com/dictionary/dendrite">Merriam-Webster</a></p>
+</blockquote>
+<p>A dendritic pattern describes a structure that branches like a tree: a trunk splits into
+limbs, limbs into branches, and branches into twigs.</p>
+<p>Applied to Nix configuration, the dendritic pattern is an organizational philosophy, not a
+library or a set of rigid, well-defined rules. A dendritic configuration organizes code as
+a tree of modules:</p>
+<ul>
+<li>Base configuration shared by all systems (common packages, locale, timezone)</li>
+<li>Host specific configuration (hardware, hostname, host specific services)</li>
+<li>User specific configuration (dotfiles, per user packages, Home Manager settings)</li>
+</ul>
+<p>These modules subdivide when they grow too large or complex, and merge together when
+evaluating a host’s configuration.</p>
+<p>This principle extends to the directory and file structure: broad concepts like <code>hosts</code>
+and <code>users</code> become directories, with modules further split into files and subdirectories
+as needed.</p>
+<p>Each module is a self-contained unit responsible for a single
+<a href="#flake.modules.class.aspect"><em>aspect</em></a>. Modules can import other modules, creating the
+branching structure. A host configuration is built by combining the relevant modules.</p>
+<p>The key dendritic insight is <strong>separation of concerns</strong>: instead of one monolithic
+<code>configuration.nix</code>, we split configuration by what it configures (networking, users,
+packages) and where it applies (all hosts, specific host, specific user). This makes it
+easier to:</p>
+<ul>
+<li>Share common configuration across multiple machines</li>
+<li>Understand what each file does at a glance</li>
+<li>Add or remove features without touching unrelated code</li>
+<li>Reuse user configurations across different hosts</li>
+</ul>
+<p>The dendritic configuration in this post is one concrete implementation among many
+possible variations. It is intentionally short and simple, to convey the core idea without
+needless complexity. However, there is no official or standardized format; the community
+is actively exploring alternatives and building tools for the dendritic pattern. Good
+references include the <a href="https://discourse.nixos.org/t/the-dendritic-pattern">NixOS Discourse
+post</a> where the pattern was first
+discussed, <a href="https://dendritic.oeiuwq.com/">Vic’s Dendritic Libs</a> for developing dendritic
+configurations, <a href="https://github.com/Doc-Steve/dendritic-design-with-flake-parts">Doc-Steve’s
+guides</a>, and the
+<a href="http://dendrix.oeiuwq.com">Dendrix</a> repository for sharing dendritic configs.</p>
+
+<section id="disqus_thread">
+  <script type="text/javascript">
+    var disqus_shortname = 'renatogarciablog';
+    var disqus_identifier = '7ac1a95a-c639-4577-84cb-7b8476ea7940';
+    var disqus_title = 'A simple Nix dendritic config';
+
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'https://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+  </script>
+  <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</section>
+
+    </main>
+  </body>
+</html>
